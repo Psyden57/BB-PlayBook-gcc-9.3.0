@@ -90,4 +90,34 @@ LD_LIBRARY_PATH=/accounts/devuser/lib/ ./test_app
 If you are packaging your application into a `.bar`, simply place the `.so` files in your app's `lib` directory inside the package, and set the `LD_LIBRARY_PATH` environment variable in your `bar-descriptor.xml`.
 
 ---
+
+## 5. Building from Source
+
+If you prefer to compile the toolchain yourself instead of using the pre-compiled binaries:
+
+1. **Extract the BlackBerry NDK**: Ensure you have the BlackBerry NDK 2.1.0 extracted on your Linux host.
+2. **Set BBNDK_ROOT**: Set the environment variable to point to your NDK installation.
+   ```bash
+   export BBNDK_ROOT=/path/to/bbndk-2.1.0
+   ```
+3. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/Psyden57/BB-PlayBook-gcc-9.3.0.git
+   cd BB-PlayBook-gcc-9.3.0
+   ```
+4. **Build and Install**:
+   The `build.sh` script will automatically download the GNU GCC and Binutils sources, apply the QNX patches, and build the toolchain.
+   ```bash
+   ./build.sh all build
+   ./build.sh all install
+   ```
+5. **Output**:
+   The fully compiled toolchain will be located in `out/playbook-gcc9/`.
+
+### Extracting Runtime Libraries manually
+If you build from source and need to grab the `.so` files yourself (for the target device), you can find them buried in the toolchain at:
+- `out/playbook-gcc9/qnx650/x86_64-linux/arm-blackberry-qnx8eabi/lib/gcc/arm-blackberry-qnx8eabi/9.3.0/libstdc++.so.6`
+- `out/playbook-gcc9/qnx650/x86_64-linux/arm-blackberry-qnx8eabi/lib/gcc/arm-blackberry-qnx8eabi/9.3.0/libgcc_s.so.1`
+
+---
 *Based on the original [bb10-gcc9](https://github.com/extrowerk/bb10-gcc9) project, optimized and patched specifically for QNX 6.5.0 on the BlackBerry PlayBook.*
