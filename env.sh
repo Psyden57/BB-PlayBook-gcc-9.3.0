@@ -55,4 +55,5 @@ export PATH="${QNX_HOST}/usr/python32/bin:${QNX_BIN}:${QNX_PREBUILT_BIN}:${PATH}
 # ?? from BB's env - unused
 unset PYTHONPATH
 
-
+# Ensure binutils (as, ld) can find their shared libraries (libopcodes, libbfd)
+export LD_LIBRARY_PATH="${QNX_PREBUILT_LIBEXEC}:${LD_LIBRARY_PATH}"

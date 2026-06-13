@@ -6,8 +6,8 @@ This toolchain brings modern C++11/C++14/C++17 features to the PlayBook.
 
 ## Downloads
 You can download the pre-compiled toolchain and runtime libraries from the **[Releases](../../releases)** page.
-- **Toolchain:** `playbook-gcc-9.3.0-linux-x86_64.tar.gz` (For 64-bit Linux hosts)
-- **Runtime libraries:** `playbook-runtime-libs.tar.gz` (For the PlayBook device)
+- **Toolchain:** `playbook-gcc-9.3.0-toolchain.tar.gz` (For 64-bit Linux hosts)
+- **Runtime libraries:** `playbook-gcc-9.3.0-target-libs.tar.gz` (For the PlayBook device)
 
 ---
 
@@ -16,7 +16,7 @@ You can download the pre-compiled toolchain and runtime libraries from the **[Re
 Extract the toolchain to a directory of your choice. For example, to `/opt/playbook-gcc9`:
 ```bash
 sudo mkdir -p /opt/playbook-gcc9
-sudo tar -xzf playbook-gcc-9.3.0-linux-x86_64.tar.gz -C /opt/playbook-gcc9
+sudo tar -xzf playbook-gcc-9.3.0-toolchain.tar.gz -C /opt/playbook-gcc9
 ```
 
 ## 2. Environment setup
@@ -65,7 +65,7 @@ arm-blackberry-qnx8eabi-g++ -std=c++14 -pthread test.cpp -o test_app
 Because you compiled the binary using a modern GCC, it requires modern C++ standard libraries (`libstdc++.so.6` and `libgcc_s.so.1`) at runtime. The PlayBook's native OS does not have these.
 
 **Step A: Transfer the runtime libraries**
-Extract `playbook-runtime-libs.tar.gz` and transfer the `.so` files to your PlayBook. I recommend keeping them in an isolated folder like `/accounts/devuser/lib` or bundled inside your app's directory.
+Extract `playbook-gcc-9.3.0-target-libs.tar.gz` and transfer the `.so` files to your PlayBook. I recommend keeping them in an isolated folder like `/accounts/devuser/lib` or bundled inside your app's directory.
 
 ```bash
 scp -o StrictHostKeyChecking=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa -o MACs=+hmac-sha1 -i rsa libstdc++.so.6 libgcc_s.so.1 devuser@<playbook-ip>:/accounts/devuser/lib/
@@ -115,9 +115,9 @@ If you prefer to compile the toolchain yourself instead of using the pre-compile
    The fully compiled toolchain will be located in `out/playbook-gcc9/`.
 
 ### Extracting runtime libraries manually
-If you build from source and need to grab the `.so` files yourself (for the target device), you can find them buried in the toolchain at:
-- `out/playbook-gcc9/qnx650/x86_64-linux/arm-blackberry-qnx8eabi/lib/gcc/arm-blackberry-qnx8eabi/9.3.0/libstdc++.so.6`
-- `out/playbook-gcc9/qnx650/x86_64-linux/arm-blackberry-qnx8eabi/lib/gcc/arm-blackberry-qnx8eabi/9.3.0/libgcc_s.so.1`
+If you build from source and need to grab the `.so` files yourself (for the target device), the `build.sh` script automatically copies them to a convenient folder for you:
+- `out/target-libs/libstdc++.so.6`
+- `out/target-libs/libgcc_s.so.1`
 
 ---
 *Based on the original [bb10-gcc9](https://github.com/extrowerk/bb10-gcc9) project, optimized and patched specifically for QNX 6.5.0 on the BlackBerry PlayBook.*
