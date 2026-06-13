@@ -66,9 +66,21 @@ doPrep() {
 		cd ${QNX_TARGET}
 		mv include/c++ include/libstdc++
 		
-		tar xzf ${WORK_DIR}/qnx-include.patch.tar.gz || exit 1
-		patch -ruN -p1 -d include < qnx-include.patch || true
-		rm qnx-include.patch
+		if [ ! -f ${WORK_DIR}/qnx-include.patch ]; then
+			tar xzf ${WORK_DIR}/qnx-include.patch.tar.gz || exit 1
+		fi
+		patch -ruN -p1 -d include < ${WORK_DIR}/qnx-include.patch || true
+		# rm qnx-include.patch  <-- Don't delete it since it's tracked by git!
+
+		# Post-patch header sanitization for GCC 9 compatibility
+		echo "Sanitizing QNX headers for GCC 9.3 compatibility..."
+		sed -i 's/#error This POSIX_C_SOURCE is unsuported with XOPEN_SOURCE/\/\/ #error This POSIX_C_SOURCE is unsuported with XOPEN_SOURCE/g' include/sys/platform.h
+		sed -i 's/#error This version of XOPEN_SOURCE is not supported/\/\/ #error This version of XOPEN_SOURCE is not supported/g' include/sys/platform.h
+		sed -i 's/namespace QNX {//g' include/string.h include/strings.h
+		sed -i 's/} \/\/ namespace QNX//g' include/string.h include/strings.h
+		sed -i 's/} \/\* namespace QNX \*\///g' include/string.h include/strings.h
+		sed -i 's/_C_STD_BEGIN//g' include/string.h include/strings.h
+		sed -i 's/_C_STD_END//g' include/string.h include/strings.h
 
 		# prebuilt directories
 		# separate folders for libstdc++, libcpp(qnx licensed), libc++ (future clang)
@@ -118,10 +130,10 @@ doPatch() {
 
 	# patch binutils
 	if [ ! -f ${WORK_DIR}/have-patched-binutils ]; then
-		if [ ! -f ${BINUTILS_SRC}.patch ]; then
-			tar xzf ${WORK_DIR}/${BINUTILS_SRC}.patch.tar.gz || exit 1
+		if [ ! -f ${WORK_DIR}/${BINUTILS_SRC}.patch ]; then
+			tar xzf ${WORK_DIR}/${BINUTILS_SRC}.patch.tar.gz -C ${WORK_DIR} || exit 1
 		fi
-		patch -ruN -p1 -d ${BINUTILS_SRC} < ${BINUTILS_SRC}.patch || exit 1
+		patch -ruN -p1 -d ${BINUTILS_SRC} < ${WORK_DIR}/${BINUTILS_SRC}.patch || exit 1
 		cd ${SRC_DIR}/${BINUTILS_SRC}/bfd && autoreconf2.69 -f || exit 1
 		cd ${SRC_DIR}/${BINUTILS_SRC}/opcodes && autoreconf2.69 -f || exit 1
 		echo `date` > ${WORK_DIR}/have-patched-binutils
@@ -131,10 +143,10 @@ doPatch() {
   
 	# patch gcc
 	if [ ! -f ${WORK_DIR}/have-patched-gcc ]; then
-		if [ ! -f ${GCC_SRC}.patch ]; then
-			tar xzf ${WORK_DIR}/${GCC_SRC}.patch.tar.gz || exit 1
+		if [ ! -f ${WORK_DIR}/${GCC_SRC}.patch ]; then
+			tar xzf ${WORK_DIR}/${GCC_SRC}.patch.tar.gz -C ${WORK_DIR} || exit 1
 		fi
-		patch -ruN -p1 -d ${GCC_SRC} < ${GCC_SRC}.patch || exit 1
+		patch -ruN -p1 -d ${GCC_SRC} < ${WORK_DIR}/${GCC_SRC}.patch || exit 1
 		cd ${SRC_DIR}/${GCC_SRC}/libstdc++-v3/config/os
 		rm -rf newlib
 		ln -s qnx/qnx7 newlib
