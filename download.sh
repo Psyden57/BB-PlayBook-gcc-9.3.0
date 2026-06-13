@@ -18,7 +18,7 @@ isl_ver="0.18"
 mpc_ver="1.0.3"
 mpfr_ver="3.1.4"
 
-# gmp doesn't not have gz version
+# gmp doesn't have gz version
 GCC_URL="https://ftp.gnu.org/pub/gnu"
 CONTRIB_URL="ftp://gcc.gnu.org/pub/gcc/infrastructure"
 
