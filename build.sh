@@ -72,15 +72,35 @@ doPrep() {
 		patch -ruN -p1 -d include < ${WORK_DIR}/qnx-include.patch || true
 		# rm qnx-include.patch  <-- Don't delete it since it's tracked by git!
 
+		# RESTORE PRISTINE HEADERS THAT WERE BROKEN BY qnx-include.patch
+		echo "Restoring pristine string.h, strings.h, math.h, and ymath.h..."
+		cp ${BBNDK_TARGET}/usr/include/string.h include/string.h
+		cp ${BBNDK_TARGET}/usr/include/strings.h include/strings.h
+		cp ${BBNDK_TARGET}/usr/include/math.h include/math.h
+		cp ${BBNDK_TARGET}/usr/include/ymath.h include/ymath.h
+
 		# Post-patch header sanitization for GCC 9 compatibility
 		echo "Sanitizing QNX headers for GCC 9.3 compatibility..."
 		sed -i 's/#error This POSIX_C_SOURCE is unsuported with XOPEN_SOURCE/\/\/ #error This POSIX_C_SOURCE is unsuported with XOPEN_SOURCE/g' include/sys/platform.h
 		sed -i 's/#error This version of XOPEN_SOURCE is not supported/\/\/ #error This version of XOPEN_SOURCE is not supported/g' include/sys/platform.h
-		sed -i 's/namespace QNX {//g' include/string.h include/strings.h
-		sed -i 's/} \/\/ namespace QNX//g' include/string.h include/strings.h
-		sed -i 's/} \/\* namespace QNX \*\///g' include/string.h include/strings.h
-		sed -i 's/_C_STD_BEGIN//g' include/string.h include/strings.h
-		sed -i 's/_C_STD_END//g' include/string.h include/strings.h
+		
+		# Disable broken QNX C++ inline functions in string.h
+		python3 -c '
+import re
+with open("include/string.h", "r") as f: c = f.read()
+c = re.sub(r"extern \"C\+\+\" \{.*?\n\}\n#endif\n", "#endif\n", c, flags=re.DOTALL)
+with open("include/string.h", "w") as f: f.write(c)
+'
+
+		# Disable broken QNX C++ inline functions in strings.h
+		sed -i 's/inline int bcmp/#if 0\ninline int bcmp/g' include/strings.h
+		sed -i 's/#else \/\* __cplusplus \*\//#endif\n#else \/\* __cplusplus \*\//g' include/strings.h
+		
+		# Remove QNX C++ std namespace wrappers from C functions
+		sed -i 's/_C_STD_BEGIN//g' include/string.h include/strings.h include/math.h include/ymath.h
+		sed -i 's/_C_STD_END//g' include/string.h include/strings.h include/math.h include/ymath.h
+		sed -i 's/using _CSTD/\/\/ using _CSTD/g' include/string.h include/strings.h include/math.h include/ymath.h
+		sed -i 's/_CSTD//g' include/string.h include/strings.h include/math.h include/ymath.h
 
 		# prebuilt directories
 		# separate folders for libstdc++, libcpp(qnx licensed), libc++ (future clang)
@@ -439,6 +459,11 @@ case $2 in
 				[ -f have-built-gcc ] || doMake
 				MAKE_TARGET="install"
 				doMake
+				
+				echo "Copying target libraries to a convenient folder..."
+				mkdir -p ${WORK_DIR}/out/target-libs
+				cp ${SRC_DIR}/build-${GCC_SRC}/arm-blackberry-qnx8eabi/libgcc/libgcc_s.so.1 ${WORK_DIR}/out/target-libs/ || true
+				cp ${SRC_DIR}/build-${GCC_SRC}/arm-blackberry-qnx8eabi/libstdc++-v3/src/.libs/libstdc++.so.6 ${WORK_DIR}/out/target-libs/ || true
 			;;
 			binutils)
 				BUILD_SRC="${BINUTILS_SRC}"
