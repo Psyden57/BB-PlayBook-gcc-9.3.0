@@ -1,8 +1,8 @@
 # GCC 9.3.0 Toolchain for BlackBerry Playbook (QNX 6.5.0)
 
-This repository contains the build scripts and pre-compiled binaries for a fully cross-compiled GCC 9.3.0 toolchain tailored specifically for the BlackBerry Playbook's OMAP 4430 architecture (ARM Cortex-A9, NEON VFPv3 FPU) running QNX 6.5.0.
+This repository contains the build scripts and pre-compiled binaries for a fully cross-compiled GCC 9.3.0 toolchain tailored specifically for the BlackBerry Playbook.
 
-This toolchain brings modern C++11/C++14/C++17 features to the Playbook, overcoming the limitations of the ancient GCC 4.4 compiler originally shipped with the NDK.
+This toolchain brings modern C++11/C++14/C++17 features to the Playbook.
 
 ## Downloads
 You can download the pre-compiled toolchain and runtime libraries from the **[Releases](../../releases)** page.
@@ -23,7 +23,7 @@ sudo tar -xzf playbook-gcc-9.3.0-linux-x86_64.tar.gz -C /opt/playbook-gcc9
 
 To use the cross-compiler, you need to add its `bin` directory to your path and set up the QNX environment variables.
 
-Create a script `env.sh` (or add to your `.bashrc`):
+Create a script `env.sh`:
 ```bash
 #!/bin/bash
 export QNX_TARGET="/opt/playbook-gcc9/qnx650"
@@ -41,7 +41,7 @@ source env.sh
 
 ## 3. Compiling Modern C++
 
-You can now compile modern C++ code targeting the Playbook! The compiler automatically links against the correct QNX 6.5.0 sysroot and targets the Playbook's Cortex-A9 architecture.
+You can now compile modern C++ code targeting the Playbook. The compiler automatically links against the correct QNX 6.5.0 sysroot and targets the Playbook's Cortex-A9 architecture.
 
 ```cpp
 // test.cpp
@@ -64,32 +64,30 @@ arm-blackberry-qnx8eabi-g++ -std=c++14 -pthread test.cpp -o test_app
 
 Because you compiled the application using a modern GCC, it requires modern C++ standard libraries (`libstdc++.so.6` and `libgcc_s.so.1`) at runtime. The Playbook's native OS does not have these.
 
-> **WARNING:** Do NOT overwrite the system libraries in `/usr/lib/` or `/lib/` on your Playbook. Doing so may break native system applications that rely on the old GCC 4.4 ABI.
-
 **Step A: Transfer the Runtime Libraries**
-Extract `playbook-runtime-libs.tar.gz` and transfer the `.so` files to your Playbook. We recommend keeping them in an isolated folder like `/tmp/pb_libs` or bundled inside your app's directory.
+Extract `playbook-runtime-libs.tar.gz` and transfer the `.so` files to your Playbook. I recommend keeping them in an isolated folder like `/accounts/devuser/lib` or bundled inside your app's directory.
 
 ```bash
-scp libstdc++.so.6 libgcc_s.so.1 devuser@<playbook-ip>:/tmp/pb_libs/
+scp -o StrictHostKeyChecking=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa -o MACs=+hmac-sha1 -i rsa libstdc++.so.6 libgcc_s.so.1 devuser@<playbook-ip>:/accounts/devuser/lib/
 ```
 
 **Step B: Transfer and Run Your Application**
 Transfer your compiled executable (`test_app`) to the Playbook.
 
 ```bash
-scp test_app devuser@<playbook-ip>:/tmp/
+scp -o StrictHostKeyChecking=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa -o MACs=+hmac-sha1 -i rsa test_app devuser@<playbook-ip>:/accounts/devuser/
 ```
 
 SSH into your Playbook and use `LD_LIBRARY_PATH` to instruct the dynamic linker to load the modern libraries before checking the system directories:
 
 ```bash
-cd /tmp
+cd /accounts/devuser/
 chmod +x test_app
-LD_LIBRARY_PATH=/tmp/pb_libs ./test_app
+LD_LIBRARY_PATH=/accounts/devuser/lib/ ./test_app
 ```
 
 ### Packaging Apps (BAR Files)
-If you are packaging your application into a `.bar` file using the Native Packager, simply place the `.so` files in your app's `lib` directory inside the package, and set the `LD_LIBRARY_PATH` environment variable in your `bar-descriptor.xml`.
+If you are packaging your application into a `.bar`, simply place the `.so` files in your app's `lib` directory inside the package, and set the `LD_LIBRARY_PATH` environment variable in your `bar-descriptor.xml`.
 
 ---
-*Based on the original [bb10-gcc9](https://github.com/the10101/bb10-gcc9) project, optimized and patched specifically for QNX 6.5.0 on the BlackBerry Playbook.*
+*Based on the original [bb10-gcc9](https://github.com/extrowerk/bb10-gcc9) project, optimized and patched specifically for QNX 6 on the BlackBerry Playbook.*
