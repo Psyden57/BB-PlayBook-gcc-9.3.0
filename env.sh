@@ -2,8 +2,15 @@
 
 export GCC_VER="9.3.0"
 
-APP_ROOT="/home/psyden/Antigravity/playbook-gcc9"
-BBNDK_ROOT="/home/psyden/Antigravity/playbook-ndk-final"
+# Get the absolute path of the directory containing this script
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Define where the output toolchain should be installed
+export APP_ROOT="${BASE_DIR}/out/playbook-gcc9"
+
+# The path to your extracted BlackBerry NDK sysroot.
+# You MUST set this environment variable before building, or edit this path directly.
+export BBNDK_ROOT="${BBNDK_ROOT:-/opt/bbndk-2.1.0}"
 export BBNDK_TARGET="${BBNDK_ROOT}/target/qnx6"
 export BBNDK_HOST="${BBNDK_ROOT}/host/linux/x86"
 export BBNDK_ABI="arm-unknown-nto-qnx6.5.0eabi"
