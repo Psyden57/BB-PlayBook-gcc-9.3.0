@@ -1,0 +1,2667 @@
+diff -Nur gcc-9.3.0/config/no-executables.m4 gcc-9.3.0-patched/config/no-executables.m4
+--- gcc-9.3.0/config/no-executables.m4	2020-03-12 07:07:20.000000000 -0400
++++ gcc-9.3.0-patched/config/no-executables.m4	2021-06-01 11:48:30.879889981 -0400
+@@ -41,7 +41,8 @@
+ 
+ m4_define([AC_LINK_IFELSE],
+ if test x$gcc_no_link = xyes; then
+-  AC_MSG_ERROR([Link tests are not allowed after [[$0]].])
++# QNX custom error suppression of link test afer GCC_NO_EXECUTABLE
++  AC_MSG_RESULT([Link tests are not allowed after [[$0]].])
+ fi
+ m4_defn([AC_LINK_IFELSE]))
+ 
+diff -Nur gcc-9.3.0/fixincludes/mkfixinc.sh gcc-9.3.0-patched/fixincludes/mkfixinc.sh
+--- gcc-9.3.0/fixincludes/mkfixinc.sh	2020-03-12 07:07:20.000000000 -0400
++++ gcc-9.3.0-patched/fixincludes/mkfixinc.sh	2021-06-01 11:48:30.879889981 -0400
+@@ -20,6 +20,8 @@
+     powerpcle-*-eabisim* | \
+     powerpcle-*-eabi* | \
+     *-musl* )
++    
++  #*-qnx* | *-nto* | \
+ 	#  IF there is no include fixing,
+ 	#  THEN create a no-op fixer and exit
+ 	(echo "#! /bin/sh" ; echo "exit 0" ) > ${target}
+diff -Nur gcc-9.3.0/gcc/config/arm/nto-eabi.h gcc-9.3.0-patched/gcc/config/arm/nto-eabi.h
+--- gcc-9.3.0/gcc/config/arm/nto-eabi.h	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/gcc/config/arm/nto-eabi.h	2021-06-01 11:48:30.899889742 -0400
+@@ -0,0 +1,82 @@
++
++#define HAVE_ATEXIT
++
++/* We default to the "aapcs-linux" ABI so that enums are int-sized by
++   default.  */
++#undef  ARM_DEFAULT_ABI
++#define ARM_DEFAULT_ABI ARM_ABI_AAPCS_LINUX
++
++#undef SIZE_TYPE
++#define SIZE_TYPE "unsigned int"
++
++#undef PTRDIFF_TYPE
++#define PTRDIFF_TYPE "int"
++
++#undef DEFAULT_SIGNED_CHAR
++#define DEFAULT_SIGNED_CHAR  1
++
++#define	OBJECT_FORMAT_ELF
++
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS() \
++do { \
++ 	TARGET_BPABI_CPP_BUILTINS(); \
++	NTO_TARGET_OS_CPP_BUILTINS(); \
++	builtin_define ("__ARM__"); \
++	builtin_define ("__arm__"); \
++} while (0)
++
++#undef SUBTARGET_ASM_FLOAT_SPEC
++#define SUBTARGET_ASM_FLOAT_SPEC \
++"%{!mfloat-abi:-mfloat-abi=softfp} %{!mfpu:-mfpu=neon-vfpv3}"
++
++#undef CPP_APCS_PC_DEFAULT_SPEC
++#define CPP_APCS_PC_DEFAULT_SPEC "-D__APCS_32__"
++
++#undef	SUBTARGET_CPP_SPEC
++#define	SUBTARGET_CPP_SPEC \
++QNX_CPP_SPEC \
++"%{!mlittle-endian: %{!mbig-endian:-mlittle-endian}} \
++ %{mlittle-endian:-D__ARMEL__ -U__ARMEB__} \
++ %{mbig-endian:-D__ARMEB__ -U__ARMEL__} \
++ -mthumb %{!mcpu:-mcpu=cortex-a9}"
++
++ //%{restrict-it:-mrestrict-it} on by default
++#undef	CC1_SPEC
++#define	CC1_SPEC \
++"-mrestrict-it"
++
++/* Call the function profiler with a given profile label.
++   This is _mcount on other nto's.  It is mcount on ntoarm.  Leave it,
++   or make sure it is also changed in lib/c/prof/arm/profile.h.  */
++#undef ARM_FUNCTION_PROFILER
++#define ARM_FUNCTION_PROFILER(STREAM, LABELNO)				\
++{									\
++  fprintf (STREAM, "\tpush {lr}\n");					\
++  fprintf (STREAM, "\tbl\tmcount%s\n", NEED_PLT_RELOC ? "(PLT)" : "");	\
++}
++
++#undef SUBTARGET_EXTRA_SPECS
++#define SUBTARGET_EXTRA_SPECS                           \
++{ "subtarget_asm_float_spec", SUBTARGET_ASM_FLOAT_SPEC }, \
++
++
++#undef CLEAR_INSN_CACHE
++#define CLEAR_INSN_CACHE(BEG, END)                                      \
++{                                                                       \
++ register unsigned long _beg __asm ("a1") = (unsigned long) (BEG);      \
++  register unsigned long _len __asm ("a2") = (unsigned long) (END) - (unsigned long) (BEG); \
++  register unsigned long _flg __asm ("a3") = 0x1000000;			\
++  __asm __volatile ("bl	msync"						\
++                    : "=r" (_beg)					\
++                    : "r" (_beg), "r" (_len), "r" (_flg) : "lr");		\
++}
++
++#undef  DEFAULT_STRUCTURE_SIZE_BOUNDARY
++#define DEFAULT_STRUCTURE_SIZE_BOUNDARY 8
++
++#define USE_OLD_ATBASE
++
++#define SUBTARGET_OVERRIDE_OPTIONS NTO_OVERRIDE_ALIGNED_ACCESS
++
++#define NTO_OVERRIDE_ALIGNED_ACCESS
+diff -Nur gcc-9.3.0/gcc/config/arm/nto.opt gcc-9.3.0-patched/gcc/config/arm/nto.opt
+--- gcc-9.3.0/gcc/config/arm/nto.opt	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/gcc/config/arm/nto.opt	2021-06-01 11:48:30.899889742 -0400
+@@ -0,0 +1,31 @@
++; QNX options.
++
++; Copyright (C) 2011-2019 Free Software Foundation, Inc.
++;
++; This file is part of GCC.
++;
++; GCC is free software; you can redistribute it and/or modify it under
++; the terms of the GNU General Public License as published by the Free
++; Software Foundation; either version 3, or (at your option) any later
++; version.
++;
++; GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++; WARRANTY; without even the implied warranty of MERCHANTABILITY or
++; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++; for more details.
++;
++; You should have received a copy of the GNU General Public License
++; along with GCC; see the file COPYING3.  If not see
++; <http://www.gnu.org/licenses/>.
++
++; See the GCC internals manual (options.texi) for a description of
++; this file's format.
++
++; Please try to keep this file in ASCII collating order.
++
++EB
++Driver
++
++EL
++Driver
++
+diff -Nur gcc-9.3.0/gcc/config/arm/t-nto gcc-9.3.0-patched/gcc/config/arm/t-nto
+--- gcc-9.3.0/gcc/config/arm/t-nto	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/gcc/config/arm/t-nto	2021-06-01 11:48:30.899889742 -0400
+@@ -0,0 +1,2 @@
++T_CPPFLAGS=-DTARGET_ALIAS=\"$(target_alias)\"
++
+diff -Nur gcc-9.3.0/gcc/config/nto-cxx.c gcc-9.3.0-patched/gcc/config/nto-cxx.c
+--- gcc-9.3.0/gcc/config/nto-cxx.c	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/gcc/config/nto-cxx.c	2021-06-01 11:48:30.887889886 -0400
+@@ -0,0 +1,54 @@
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "tm.h"
++#include "opts.h"
++
++/**
++ * The library names.  These will be passed to the linker using the '-l' option.
++ */
++static const char * const gnu_cxx_stdlib = "stdc++";
++static const char * const llvm_cxx_stdlib = "c++";
++
++/**
++ * Determines the C++ standard library to use, given the combination of
++ * configured defaults and command-line options.  The default is determined at
++ * compiler configuration time and the actual library depends on the last
++ * instance of the -stdlib= command-line option given.
++ *
++ * Because this function is called before duplicate options are removed and the
++ * canonical option setting determined, it's mandatory to scan the entire list
++ * of known options to look for the lastmost occurrence of the -stdlib option,
++ * which may be given more than once.
++ */
++const char *
++nto_select_libstdcxx (struct cl_decoded_option* options, unsigned int options_count)
++{
++#if defined(DEFAULT_STDLIB_LIBSTDCXX)
++    const char * stdlib = gnu_cxx_stdlib;
++#elif defined(DEFAULT_STDLIB_LIBCXX)
++    const char * stdlib = llvm_cxx_stdlib;
++#else
++# error No default C++ standard library configured.
++#endif
++
++	for(unsigned int i = 0; i < options_count; ++i)
++	{
++		if(options[i].opt_index == OPT_stdlib_)
++		{
++			if(0 == strcmp (options[i].arg, "libstdc++"))
++			    stdlib = gnu_cxx_stdlib;
++			else if(0 == strcmp (options[i].arg, "libc++"))
++			    stdlib = llvm_cxx_stdlib;
++		}
++	}
++
++	return stdlib;
++}
++
++const char *
++nto_select_libstdcxx_static (void)
++{
++  return NULL;
++}
++
+diff -Nur gcc-9.3.0/gcc/config/nto.h gcc-9.3.0-patched/gcc/config/nto.h
+--- gcc-9.3.0/gcc/config/nto.h	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/gcc/config/nto.h	2021-06-01 11:48:30.899889742 -0400
+@@ -0,0 +1,300 @@
++/* Base configuration for all QNX Neutrino targets
++ *   Copyright (C) 2006
++ *   Free Software Foundation, Inc.
++ *
++ * This file is part of GCC.
++ *
++ * GCC is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2, or (at your option)
++ * any later version.
++ *
++ * GCC is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with GCC; see the file COPYING.  If not, write to
++ * the Free Software Foundation, 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.  */
++
++/**
++ *  retrieve gcc version...when bootstrapping is enabled
++ *  WARNING. --disable-bootstrap causes this to return the host's gcc version
++ */
++#define PREP_QUOTE(...) #__VA_ARGS__
++#define QUOTE(...) PREP_QUOTE(__VA_ARGS__)
++//#define GCC_VER QUOTE(__GNUC__.__GNUC_MINOR__.__GNUC_PATCHLEVEL__)
++
++#define GCC_VER "9.3.0"
++
++#undef GCC_DRIVER_HOST_INITIALIZATION
++#define GCC_DRIVER_HOST_INITIALIZATION \
++do { \
++  const char *QNX_HOST = env.get ("QNX_HOST"); \
++  if (!QNX_HOST) fatal_error (input_location, "$QNX_HOST not set."); \
++  \
++  const char *QNX_TARGET = env.get ("QNX_TARGET"); \
++  if (!QNX_TARGET) fatal_error (input_location, "$QNX_TARGET not set.");\
++  \
++  const char *QNX_PREBUILT_GCCLIB = env.get ("QNX_PREBUILT_GCCLIB"); \
++  if (!QNX_PREBUILT_GCCLIB) \
++    fatal_error (input_location, "ERROR: $QNX_PREBUILT_GCCLIB not set.");\
++  \
++  const char *QNX_PREBUILT = env.get ("QNX_PREBUILT"); \
++  if (!QNX_PREBUILT) fatal_error (input_location, "$QNX_PREBUILT not set.");\
++  \
++  const char *QNX_PREBUILT_BIN = concat (QNX_PREBUILT, "/bin", NULL); \
++  const char *QNX_PREBUILT_SYSLIB = concat (QNX_PREBUILT, "/lib", NULL); \
++  const char *QNX_PREBUILT_USRLIB = concat (QNX_PREBUILT, "/usr/lib", NULL); \
++  \
++  add_prefix (&exec_prefixes, \
++    QNX_PREBUILT_BIN, NULL, PREFIX_PRIORITY_B_OPT, 0, 0); \
++  \
++  add_prefix (&exec_prefixes, \
++    QNX_PREBUILT_GCCLIB, NULL, PREFIX_PRIORITY_B_OPT, 0, 0); \
++  \
++  add_prefix (&startfile_prefixes, \
++    QNX_PREBUILT_USRLIB, NULL, PREFIX_PRIORITY_B_OPT, 0, 0); \
++  \
++  add_prefix (&startfile_prefixes, \
++    QNX_PREBUILT_SYSLIB, NULL, PREFIX_PRIORITY_B_OPT, 0, 0); \
++  \
++  add_prefix (&startfile_prefixes, \
++    QNX_PREBUILT_GCCLIB, NULL, PREFIX_PRIORITY_B_OPT, 0, 0); \
++  \
++} while (0)
++
++#if QNX_ENABLE_RELRO
++#define QNX_RELRO_SPEC "-zrelro -znow"
++#else
++#define QNX_RELRO_SPEC ""
++#endif
++
++/* Don't assume anything about the header files.  */
++/* System headers are not C++-aware.  */
++//#undef SYSTEM_IMPLICIT_EXTERN_C
++//#define SYSTEM_IMPLICIT_EXTERN_C 0
++
++/* Allow stabs and dwarf, and make dwarf the default for Neutrino */
++#undef PREFERRED_DEBUGGING_TYPE
++#undef DBX_DEBUGGING_INFO
++#undef DWARF_DEBUGGING_INFO
++#undef DWARF2_DEBUGGING_INFO
++
++#define PREFERRED_DEBUGGING_TYPE DWARF2_DEBUG
++#define DBX_DEBUGGING_INFO
++#define DWARF_DEBUGGING_INFO 1
++#define DWARF2_DEBUGGING_INFO 1
++
++#define SUPPORTS_WEAK 1
++
++#undef MD_EXEC_PREFIX
++#undef MD_STARTFILE_PREFIX
++
++#ifdef HAVE_GNU_INDIRECT_FUNCTION
++#define GNU_INDIRECT_FUNCTION if (HAVE_GNU_INDIRECT_FUNCTION) \
++builtin_define ("__GNU_INDIRECT_FUNCTION__");
++#else
++#define GNU_INDIRECT_FUNCTION
++#endif
++
++// Q_OS_BLACKBERRY is a BB10 Cascades symbol, now serves as BB10 id now
++
++#define NTO_TARGET_OS_CPP_BUILTINS()           \
++do {                                           \
++	builtin_define ("__QNX__");                  \
++	builtin_define ("__QNXNTO__");               \
++	builtin_define ("__unix__");                 \
++	builtin_define ("__unix");                   \
++	builtin_define ("__ELF__");                  \
++	builtin_assert ("system=posix");             \
++	builtin_assert ("system=qnx");               \
++	builtin_assert ("system=nto");               \
++	builtin_assert ("system=qnxnto");            \
++	builtin_define ("__PRAGMA_PACK_PUSH_POP__"); \
++	GNU_INDIRECT_FUNCTION                        \
++} while (0)
++
++/* Don't set libgcc.a's gthread/pthread symbols to weak, as our
++ *   libc has them as well, and we get problems when linking static,
++ *   as libgcc.a will get a symbol value of 0.  */
++#define GTHREAD_USE_WEAK 0
++
++#undef THREAD_MODEL_SPEC
++#define THREAD_MODEL_SPEC "posix"
++
++/* Under Neutrino, there is one set of header files for all targets. wchar_t is
++ *   defined as a 32 bit unsigned integer */
++#undef WCHAR_TYPE
++#define WCHAR_TYPE "unsigned int"
++
++#undef WCHAR_TYPE_SIZE
++#define WCHAR_TYPE_SIZE 32
++
++#undef WINT_TYPE
++#define WINT_TYPE "long int"
++//#define WINT_TYPE "int"
++
++#undef WINT_TYPE_SIZE
++#define WINT_TYPE_SIZE 32
++
++#define TARGET_POSIX_IO
++
++/* Determine what functions are present at the runtime;
++ *   all new versions of QNX have C99 functions.  */
++#undef TARGET_LIBC_HAS_FUNCTION
++#define TARGET_LIBC_HAS_FUNCTION default_libc_has_function
++
++#undef GOMP_SELF_SPECS
++#define GOMP_SELF_SPECS ""
++
++#if defined(HAVE_LD_EH_FRAME_HDR)
++#  if defined LINK_EH_SPEC
++#    undef LINK_EH_SPEC
++#  endif
++#define LINK_EH_SPEC "%{!static|static-pie:--eh-frame-hdr} "
++#endif
++
++/* Remove the default C++ headers so we can select via -stdlib */
++#undef GPLUSPLUS_INCLUDE_DIR
++#undef GPLUSPLUS_TOOL_INCLUDE_DIR
++#undef GPLUSPLUS_BACKWARD_INCLUDE_DIR
++
++/* Define LIBSTDCXX so we can select the implementation based on -stdlib */
++struct cl_decoded_option;
++extern const char *nto_select_libstdcxx(struct cl_decoded_option* options, unsigned int options_count);
++#define LIBSTDCXX nto_select_libstdcxx(new_decoded_options, j)
++#define LIBSTDCXX_PROFILE LIBSTDCXX
++extern const char *nto_select_libstdcxx_static(void);
++#define LIBSTDCXX_STATIC nto_select_libstdcxx_static()
++
++
++#define DEFAULT_STDLIB_SPEC "|!stdlib=*"
++#if DEFAULT_STDLIB_LIBSTDCXX
++#define NTO_EXTRA_LIBSTDCXX_SPEC DEFAULT_STDLIB_SPEC
++#define NTO_EXTRA_LIBCXX_SPEC ""
++#elif DEFAULT_STDLIB_LIBCXX
++#define NTO_EXTRA_LIBCXX_SPEC DEFAULT_STDLIB_SPEC
++#define NTO_EXTRA_LIBSTDCXX_SPEC ""
++#else
++#define NTO_EXTRA_LIBSTDCXX_SPEC ""
++#define NTO_EXTRA_LIBCXX_SPEC ""
++#endif
++
++// C++11 threads depends on sysctl() in libsocket
++// libcS has at least one get* function not in libc
++// as-needed prevents multiple definitions but was preventing
++// the weak sysctl symbol from being found. it required resetting no-as-needed
++#undef LIB_SPEC
++#define LIB_SPEC \
++"-L=/lib -L=/usr/lib -L%:getenv(QNX_PREBUILT_GCCLIB /)\
++%{shared|fpic|fPIC|fpie|fPIE: -rpath-link==/lib -rpath-link==/usr/lib \
++ -rpath-link=%:getenv(QNX_PREBUILT_GCCLIB /)} \
++ -lsocket -lc --as-needed -lcS"
++
++#undef LIBGCC_SPEC
++#define LIBGCC_SPEC \
++"%{fpie|fPIE: \
++  %{static*:%{!fno-exceptions:-lgcc_eh} -lgcc}\
++  %{!static*:-lgcc_s } } \
++%{!fpie:%{!fPIE:%{!fno-exceptions:-lgcc_eh} -lgcc} }"
++
++// crt1 references main() and must be excluded when building shared libraries ?
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC \
++"%{!shared: %{pg:mcrt1.o%s}%{!pg:%{p:mcrt1.o%s}%{!p:%{profile:mcrt1.o%s} } } \
++  %{!pg: \
++    %{!static:crt1S.o%s} \
++    %{static:crt1.o%s} } \
++} \
++crti.o%s \
++\
++%{!static:crtbeginS.o%s}%{static: crtbegin.o%s}"
++
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC \
++"%{Ofast|ffast-math|funsafe-math-optimizations:crtfastmath.o%s} \
++\
++ %{!static:crtendS.o%s} \
++ %{static:crtend.o%s} \
++\
++crtn.o%s"
++
++// -pie unless -static is requested
++#undef LINK_SPEC
++#define LINK_SPEC \
++"%{h*} %{v:-V} \
++%{b} %{Wl,*:%*} -X \
++%{!r:--build-id=md5} \
++--warn-shared-textrel \
++--eh-frame-hdr \
++" QNX_RELRO_SPEC " \
++%{G:-G} %{MAP:-Map mapfile} \
++%{!shared: \
++  %{!static: \
++    %{!fpic:%{!fPIC:-fPIC} } \
++  } } \
++%{shared|-fpic|fPIC|Bdynamic:--dynamic-linker=usr/lib/ldqnx.so.2} \
++%{fpie|fPIE:-pie} \
++%{!fuse-ld:-fuse-ld=gold} \
++%{-mlittle-endian:-EL} %{-mbig-endian:-EB} \
++--sysroot=%:getenv(QNX_PREBUILT /)"
++
++#undef QNX_CPP_SPEC
++#define QNX_CPP_SPEC \
++"%{mlittle-endian:-D__LITTLEENDIAN__} \
++%{mbig-endian:-D__BIGENDIAN__} \
++%{!mlittle-endian:%{!mbig-endian:-D__LITTLEENDIAN__}} \
++-DQ_OS_BLACKBERRY \
++-D_REENTRANT \
++-D_POSIX_SOURCE \
++-D_POSIX_C_SOURCE=200809L \
++-D_XOPEN_SOURCE=700 \
++-D_QNX_SOURCE \
++-D_C99 \
++-D_FORTIFY_SOURCE=2 \
++-D_LARGEFILE64_SOURCE \
++%{shared:-D__SLIB -D__SLIB_DATA_INDIRECT} \
++%{cpp_cpu}%{cpp_arch} \
++%{!fpic:%{!fPIC:%{!fno-pic:%{!fno-PIC:-fPIC} } } } \
++-D_NTO_HDR_DIR_=%:getenv(QNX_INC /) \
++-isystem %:getenv(QNX_INC /)"
++
++#undef CPP_SPEC
++#define CPP_SPEC QNX_CPP_SPEC
++
++// libstdc++ include tree is set at build time and gcc uses it internally
++// modifications in nto-cxx.c do not prevent gcc from checking
++//
++
++#undef CPLUSPLUS_CPP_SPEC
++#define CPLUSPLUS_CPP_SPEC \
++"-D_NO_CPP_INLINES \
++ %{!nostdinc++: \
++%{stdlib=libcpp|stdlib=libcpp-ne: \
++-isystem %:getenv(QNX_INC /libcpp/c) \
++-isystem %:getenv(QNX_INC /libcpp)} \
++\
++%{stdlib=libcpp-ne: -D_NO_EX } \
++%{stdlib=libc++" NTO_EXTRA_LIBCXX_SPEC ": \
++-isystem %:getenv(QNX_INC /libc++)} \
++\
++%{stdlib=libstdc++" NTO_EXTRA_LIBSTDCXX_SPEC ": \
++-isystem %:getenv(QNX_INC /libstdc++/" GCC_VER ") \
++-isystem %:getenv(QNX_INC /libstdc++/" GCC_VER "/" DEFAULT_TARGET_MACHINE ") \
++-isystem %:getenv(QNX_INC /libstdc++/" GCC_VER "/backward) } }" \
++CPP_SPEC
++
++// CPP_SPEC (/include (libc)) appearing after C++ includes is significant
++
++#undef ASM_SPEC
++#define ASM_SPEC \
++"%{EB:-EB} %{!EB:-EL} %{EL:-EL} \
++%(asm_cpu_spec) \
++%{fpic|fPIC|fpie|fPIE:--defsym __PIC__=1} \
++%{mcpu=*:-mcpu=%*} \
++%{march=*:-march=%*} \
++%{mfloat-abi=*} %{mfpu=*}"
++
+diff -Nur gcc-9.3.0/gcc/config/nto.opt gcc-9.3.0-patched/gcc/config/nto.opt
+--- gcc-9.3.0/gcc/config/nto.opt	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/gcc/config/nto.opt	2021-06-01 11:48:30.899889742 -0400
+@@ -0,0 +1,74 @@
++; QNX Neutrino options.
++
++; Copyright (C) 2013
++; Free Software Foundation, Inc.
++;
++; This file is part of GCC.
++;
++; GCC is free software; you can redistribute it and/or modify it under
++; the terms of the GNU General Public License as published by the Free
++; Software Foundation; either version 3, or (at your option) any later
++; version.
++;
++; GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++; WARRANTY; without even the implied warranty of MERCHANTABILITY or
++; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++; for more details.
++;
++; You should have received a copy of the GNU General Public License
++; along with GCC; see the file COPYING3.  If not see
++; <http://www.gnu.org/licenses/>.
++
++; See the GCC internals manual (options.texi) for a description of this file's format.
++
++; Please try to keep this file in ASCII collating order.
++
++MAP
++Driver
++
++nopie
++Driver Alias(no-pie)
++
++posix
++Driver
++
++pthread
++Driver
++
++rdynamic
++Driver
++
++rpath-link
++Driver Separate
++
++rpath-link=
++Driver JoinedOrMissing
++
++rpath=
++Driver JoinedOrMissing
++
++; Choose your C++ standard library implementation.
++;
++; Due to a twist in the way GCC handles adding the C++ standard library, the
++; name of library needs to be known before the command-line arguments are fully
++; parsed, so it doesn't matter what the enum values are here. The actual argument
++; to -stdlib is what gets used, not the internal token for the enumeration value.
++;
++; The use of an enum here is only to give a useful error message when an invalid
++; choice of C++ standard libraries is supplied on the command line.
++;
++Enum
++Name(cxxstdlib) Type(int)
++C++ standard library alternative:
++
++EnumValue
++Enum(cxxstdlib) String(libc++) Value(1)
++
++EnumValue
++Enum(cxxstdlib) String(libstdc++) Value(2)
++
++stdlib=
++C++ Joined Enum(cxxstdlib) Var(cxxstdlib)
++Specify the C++ Standard Library
++
++; This comment is to ensure we retain the blank line above.
+diff -Nur gcc-9.3.0/gcc/config/nto-stdint.h gcc-9.3.0-patched/gcc/config/nto-stdint.h
+--- gcc-9.3.0/gcc/config/nto-stdint.h	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/gcc/config/nto-stdint.h	2021-06-01 11:48:30.891889837 -0400
+@@ -0,0 +1,55 @@
++/* Definitions for <stdint.h> types for QNX Neutrino systems.
++   Copyright (C) 2011 Free Software Foundation, Inc.
++
++This file is part of GCC.
++
++GCC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 3, or (at your option)
++any later version.
++
++GCC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++Under Section 7 of GPL version 3, you are granted additional
++permissions described in the GCC Runtime Library Exception, version
++3.1, as published by the Free Software Foundation.
++
++You should have received a copy of the GNU General Public License and
++a copy of the GCC Runtime Library Exception along with this program;
++see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++<http://www.gnu.org/licenses/>.  */
++
++#define SIG_ATOMIC_TYPE   "int"
++
++#define INT8_TYPE         "signed char"
++#define INT16_TYPE        "short int"
++#define INT32_TYPE        "int"
++#define INT64_TYPE        (LONG_TYPE_SIZE == 64 ? "long int" : "long long int")
++#define UINT8_TYPE        "unsigned char"
++#define UINT16_TYPE       "short unsigned int"
++#define UINT32_TYPE       "unsigned int"
++#define UINT64_TYPE       (LONG_TYPE_SIZE == 64 ? "long unsigned int" : "long long unsigned int")
++
++#define INT_LEAST8_TYPE   "signed char"
++#define INT_LEAST16_TYPE  "short int"
++#define INT_LEAST32_TYPE  "int"
++#define INT_LEAST64_TYPE  (LONG_TYPE_SIZE == 64 ? "long int" : "long long int")
++#define UINT_LEAST8_TYPE  "unsigned char"
++#define UINT_LEAST16_TYPE "short unsigned int"
++#define UINT_LEAST32_TYPE "unsigned int"
++#define UINT_LEAST64_TYPE (LONG_TYPE_SIZE == 64 ? "long unsigned int" : "long long unsigned int")
++
++#define INT_FAST8_TYPE    "signed char"
++#define INT_FAST16_TYPE   "short int"
++#define INT_FAST32_TYPE   "int"
++#define INT_FAST64_TYPE   (LONG_TYPE_SIZE == 64 ? "long int" : "long long int")
++#define UINT_FAST8_TYPE   "unsigned char"
++#define UINT_FAST16_TYPE  "short unsigned int"
++#define UINT_FAST32_TYPE  "unsigned int"
++#define UINT_FAST64_TYPE  (LONG_TYPE_SIZE == 64 ? "long unsigned int" : "long long unsigned int")
++
++#define INTPTR_TYPE       (LONG_TYPE_SIZE == 64 ? "long int" : "int")
++#define UINTPTR_TYPE      (LONG_TYPE_SIZE == 64 ? "long unsigned int" : "unsigned int")
+diff -Nur gcc-9.3.0/gcc/config/t-nto gcc-9.3.0-patched/gcc/config/t-nto
+--- gcc-9.3.0/gcc/config/t-nto	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/gcc/config/t-nto	2021-06-01 11:48:30.899889742 -0400
+@@ -0,0 +1,21 @@
++# Copyright (C) 2016 Free Software Foundation, Inc.
++#
++# This file is part of GCC.
++#
++# GCC is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3, or (at your option)
++# any later version.
++#
++# GCC is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with GCC; see the file COPYING3.  If not see
++# <http://www.gnu.org/licenses/>.
++
++nto-cxx.o: config/nto-cxx.c
++	$(COMPILE) $(PREPROCESSOR_DEFINES) $<
++	$(POSTCOMPILE)
+diff -Nur gcc-9.3.0/gcc/config.gcc gcc-9.3.0-patched/gcc/config.gcc
+--- gcc-9.3.0/gcc/config.gcc	2020-03-12 07:07:21.000000000 -0400
++++ gcc-9.3.0-patched/gcc/config.gcc	2021-06-01 11:48:30.887889886 -0400
+@@ -180,7 +180,7 @@
+ #			the --with-sysroot configure option or the
+ #			--sysroot command line option is used this
+ #			will be relative to the sysroot.
+-# target_type_format_char 
++# target_type_format_char
+ # 			The default character to be used for formatting
+ #			the attribute in a
+ #			.type symbol_name, ${t_t_f_c}<property>
+@@ -676,7 +676,7 @@
+ # Common parts for widely ported systems.
+ case ${target} in
+ *-*-darwin*)
+-  tmake_file="t-darwin "
++  tmake_file="t-darwin ${cpu_type}/t-darwin"
+   tm_file="${tm_file} darwin.h"
+   case ${target} in
+   *-*-darwin9*)
+@@ -864,6 +864,33 @@
+       ;;
+   esac
+   ;;
++*-*-qnx*)
++  tm_file="${tm_file} dbxelf.h elfos.h nto-stdint.h nto.h"
++  tmake_file="${tmake_file} t-nto t-slibgcc"
++  extra_options="${extra_options} nto.opt"
++  extra_gcc_objs="nto-cxx.o"
++  gas=yes
++  gnu_ld=yes
++  case ${target} in
++  *-qnx6.[0-9].*)
++        tm_defines="${tm_defines} DEFAULT_STDLIB_LIBSTDCXX=1"
++        tm_defines="${tm_defines} QNX_ENABLE_RELRO=0"
++        ;;
++  *)
++        tm_defines="${tm_defines} DEFAULT_STDLIB_LIBSTDCXX=1"
++        tm_defines="${tm_defines} QNX_ENABLE_RELRO=1"
++        case ${enable_threads} in
++          yes)
++            thread_file='posix'
++          ;;
++        esac
++        ;;
++  esac
++    # Force .init_array support.  The configure script cannot always
++    # automatically detect that GAS supports it, yet we require it.
++    gcc_cv_initfini_array=yes
++    default_use_cxa_atexit=yes
++  ;;
+ *-*-phoenix*)
+   gas=yes
+   gnu_ld=yes
+@@ -980,7 +1007,7 @@
+ case ${target} in
+ aarch64*-*-elf | aarch64*-*-fuchsia* | aarch64*-*-rtems*)
+ 	tm_file="${tm_file} dbxelf.h elfos.h newlib-stdint.h"
+-	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-elf-raw.h"
++	tm_file="${tm_file} aarch64/elf.h aarch64/aarch64-elf-raw.h"
+ 	tmake_file="${tmake_file} aarch64/t-aarch64"
+ 	case $target in
+ 	aarch64-*-elf*)
+@@ -1050,6 +1077,12 @@
+ 	done
+ 	TM_MULTILIB_CONFIG=`echo $TM_MULTILIB_CONFIG | sed 's/^,//'`
+ 	;;
++aarch64*-*-qnx*)
++    tm_file="${tm_file} dbxelf.h elfos.h gnu-user.h nto.h nto-stdint.h"
++    tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-nto.h"
++    tm_defines="${tm_defines}  TARGET_DEFAULT_ASYNC_UNWIND_TABLES=1"
++    tmake_file="${tmake_file} aarch64/t-aarch64 aarch64/t-aarch64-nto"
++    ;;
+ alpha*-*-linux*)
+ 	tm_file="elfos.h ${tm_file} alpha/elf.h alpha/linux.h alpha/linux-elf.h glibc-stdint.h"
+ 	tmake_file="${tmake_file} alpha/t-linux alpha/t-alpha"
+@@ -1161,6 +1194,16 @@
+ 	esac
+ 	with_tls=${with_tls:-gnu}
+ 	;;
++arm*-*-qnx*eabi*)
++	tm_file="${tm_file} arm/elf.h arm/aout.h arm/bpabi.h arm/nto-eabi.h"
++	tmake_file="${tmake_file} arm/t-arm arm/t-nto arm/t-bpabi"
++	extra_options="${extra_options} arm/nto.opt"
++	case ${target} in
++	*-qnx6.[0-5].*)
++		tm_file="$tm_file arm/nto-aligned.h"
++		;;
++	esac
++	;;
+ arm*-*-netbsdelf*)
+ 	tm_file="dbxelf.h elfos.h ${nbsd_tm_file} arm/elf.h arm/aout.h ${tm_file} arm/netbsd-elf.h"
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+@@ -1609,25 +1652,16 @@
+ 		dwarf2=no
+ 	fi
+ 	;;
+-i[34567]86-*-darwin1[89]*)
+-	echo "Error: 32bit target is not supported after Darwin17" 1>&2
+-	;;
+ i[34567]86-*-darwin*)
+ 	need_64bit_isa=yes
+ 	# Baseline choice for a machine that allows m64 support.
+ 	with_cpu=${with_cpu:-core2}
+-	tmake_file="${tmake_file} ${cpu_type}/t-darwin32-biarch t-slibgcc"
+-	tm_file="${tm_file} ${cpu_type}/darwin32-biarch.h"
+-	;;
+-x86_64-*-darwin1[89]* | x86_64-*-darwin2[01]*)
+-	# Only 64b from now
+-	with_cpu=${with_cpu:-core2}
+ 	tmake_file="${tmake_file} t-slibgcc"
+ 	;;
+ x86_64-*-darwin*)
+ 	with_cpu=${with_cpu:-core2}
+-	tmake_file="${tmake_file} ${cpu_type}/t-darwin64-biarch t-slibgcc"
+-	tm_file="${tm_file} ${cpu_type}/darwin64-biarch.h"
++	tmake_file="${tmake_file} ${cpu_type}/t-darwin64 t-slibgcc"
++	tm_file="${tm_file} ${cpu_type}/darwin64.h"
+ 	;;
+ i[34567]86-*-elfiamcu)
+ 	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h newlib-stdint.h i386/iamcu.h"
+@@ -1666,6 +1700,10 @@
+ 	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h ${nbsd_tm_file} i386/netbsd-elf.h"
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+ 	;;
++x86_64-*-nto-qnx*)
++    tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h nto-stdint.h i386/x86-64.h nto.h i386/nto64.h"
++    tmake_file="${tmake_file} i386/t-nto64"
++    ;;
+ x86_64-*-netbsd*)
+ 	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h ${nbsd_tm_file} i386/x86-64.h i386/netbsd64.h"
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+@@ -1684,6 +1722,11 @@
+ 	gas=yes
+ 	gnu_ld=yes
+ 	;;
++i[34567]86-*-nto-qnx*)
++    tm_file="${tm_file} i386/att.h dbxelf.h tm-dwarf2.h elfos.h nto.h nto-stdint.h i386/unix.h i386/nto.h"
++    tmake_file="${tmake_file} i386/t-nto"
++	extra_options="${extra_options} i386/nto.opt"
++	;;
+ i[34567]86-*-linux* | i[34567]86-*-kfreebsd*-gnu | i[34567]86-*-gnu* | i[34567]86-*-kopensolaris*-gnu)
+ 			# Intel 80386's running GNU/*
+ 			# with ELF format using glibc 2
+@@ -2248,6 +2291,10 @@
+ 	tm_file="elfos.h ${tm_file} mips/elf.h ${nbsd_tm_file} mips/netbsd.h"
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+ 	;;
++mips*-*-nto-qnx*)
++    tm_file="dbxelf.h elfos.h tm-dwarf2.h ${tm_file} mips/elf.h nto.h nto-stdint.h mips/nto.h"
++    tmake_file="mips/t-nto"
++    ;;
+ mips*-img-linux*)
+ 	tm_file="dbxelf.h elfos.h gnu-user.h linux.h linux-android.h glibc-stdint.h ${tm_file} mips/gnu-user.h mips/linux.h mips/linux-common.h mips/mti-linux.h"
+ 	extra_options="${extra_options} linux-android.opt"
+@@ -2587,31 +2634,26 @@
+ #	extra_headers=
+ #	;;
+ powerpc-*-darwin*)
+-	extra_options="${extra_options} ${cpu_type}/darwin.opt"
++	extra_options="${extra_options} rs6000/darwin.opt"
+ 	case ${target} in
+-	  *-darwin1[0-9]* | *-darwin9*)
+-	    tmake_file="${tmake_file} ${cpu_type}/t-darwin32-biarch"
+-	    tm_file="${tm_file} ${cpu_type}/darwin32-biarch.h"
+-	    ;;
+-	  *-darwin8*)
+-	    tmake_file="${tmake_file} ${cpu_type}/t-darwin32-biarch"
+-	    tm_file="${tm_file} ${cpu_type}/darwin32-biarch.h"
+-	    tm_file="${tm_file} ${cpu_type}/darwin8.h"
++	  *-darwin1[0-9]* | *-darwin[8-9]*)
++	    tmake_file="${tmake_file} rs6000/t-darwin8"
++	    tm_file="${tm_file} rs6000/darwin8.h"
+ 	    ;;
+ 	  *-darwin7*)
+-	    tm_file="${tm_file} ${cpu_type}/darwin7.h"
++	    tm_file="${tm_file} rs6000/darwin7.h"
+ 	    ;;
+-	  *-darwin[456]*)
+-	    # Earlier - ingle arch, with 32b only
+-	    # OS X 10.0, the first edition is Darwin4
++	  *-darwin[0-6]*)
+ 	    ;;
+ 	esac
+ 	tmake_file="${tmake_file} t-slibgcc"
++	extra_headers=altivec.h
+ 	;;
+ powerpc64-*-darwin*)
+ 	extra_options="${extra_options} ${cpu_type}/darwin.opt"
+-	tmake_file="${tmake_file} ${cpu_type}/t-darwin64-biarch t-slibgcc"
+-	tm_file="${tm_file} ${cpu_type}/darwin64-biarch.h"
++	tmake_file="${tmake_file} ${cpu_type}/t-darwin64 t-slibgcc"
++	tm_file="${tm_file} ${cpu_type}/darwin8.h ${cpu_type}/darwin64.h"
++	extra_headers=altivec.h
+ 	;;
+ powerpc*-*-freebsd*)
+ 	tm_file="${tm_file} dbxelf.h elfos.h gnu-user.h ${fbsd_tm_file} rs6000/sysv4.h"
+@@ -2628,6 +2670,12 @@
+ 		;;
+ 	esac
+ 	;;
++powerpc*-*-nto-qnx* | ppc*-*-nto-qnx*)
++    tm_file="${tm_file} dbxelf.h tm-dwarf2.h elfos.h freebsd-spec.h rs6000/sysv4.h nto.h nto-stdint.h rs6000/nto.h"
++    tmake_file=rs6000/t-nto
++    extra_options="${extra_options} rs6000/sysv4.opt rs6000/nto.opt"
++    #xm_defines=POSIX
++    ;;
+ powerpc-*-netbsd*)
+ 	tm_file="${tm_file} dbxelf.h elfos.h gnu-user.h ${nbsd_tm_file} freebsd-spec.h rs6000/sysv4.h rs6000/netbsd.h"
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+@@ -3021,6 +3069,13 @@
+ 	tm_file="${tm_file} dbxelf.h elfos.h sparc/sysv4.h sparc/sp-elf.h sparc/rtemself.h rtems.h newlib-stdint.h"
+ 	tmake_file="${tmake_file} sparc/t-sparc sparc/t-rtems"
+ 	;;
++sh*-*-nto-qnx*)
++    xm_defines=POSIX
++    tm_file="${tm_file} dbxelf.h tm-dwarf2.h elfos.h sh/elf.h nto.h nto-stdint.h sh/nto.h"
++    tmake_file="${tmake_file} sh/t-sh sh/t-nto"
++    extra_options="${extra_options} sh/nto.opt"
++    float_format=sh
++    ;;
+ sparc-*-linux*)
+ 	tm_file="${tm_file} dbxelf.h elfos.h sparc/sysv4.h gnu-user.h linux.h glibc-stdint.h sparc/tso.h"
+ 	extra_options="${extra_options} sparc/long-double-switch.opt"
+@@ -4035,6 +4090,9 @@
+ 					aprofile|rmprofile)
+ 						tmake_profile_file="arm/t-multilib"
+ 						;;
++					armv7-a | armv8-a)
++						tmake_profile_file="arm/t-nto"
++						;;
+ 					@*)
+ 						ml=`echo "X$arm_multilib" | sed '1s,^X@,,'`
+ 						if test -f "${srcdir}/config/arm/${ml}"; then
+@@ -4700,12 +4758,14 @@
+ 			 echo "#undef  LINK_OS_EXTRA_SPEC32"
+ 			 echo "#define LINK_OS_EXTRA_SPEC32" \
+ 			      "\"%(link_os_new_dtags)" \
+-			      "-rpath $prefix/lib -rpath $at/lib\""
++			      "-rpath $prefix/lib -rpath $at/lib" \
++			      "-L $prefix/lib -L $at/lib\""
+ 			 echo
+ 			 echo "#undef  LINK_OS_EXTRA_SPEC64"
+ 			 echo "#define LINK_OS_EXTRA_SPEC64" \
+ 			      "\"%(link_os_new_dtags)" \
+-			      "-rpath $prefix/lib64 -rpath $at/lib64\""
++			      "-rpath $prefix/lib64 -rpath $at/lib64" \
++			      "-L $prefix/lib64 -L $at/lib64\""
+ 			 echo
+ 			 echo "#undef  LINK_OS_NEW_DTAGS_SPEC"
+ 			 echo "#define LINK_OS_NEW_DTAGS_SPEC" \
+@@ -4718,10 +4778,7 @@
+ 			 echo "#define MD_EXEC_PREFIX \"$at/bin/\""
+ 			 echo
+ 			 echo "#undef  MD_STARTFILE_PREFIX"
+-			 echo "#define MD_STARTFILE_PREFIX \"$prefix/lib/\""
+-			 echo
+-			 echo "#undef  MD_STARTFILE_PREFIX_1"
+-			 echo "#define MD_STARTFILE_PREFIX_1 \"$at/lib/\"") \
++			 echo "#define MD_STARTFILE_PREFIX \"$at/lib/\"") \
+ 			    > advance-toolchain.h
+ 		    else
+ 			echo "Unknown advance-toolchain $with_advance_toolchain"
+@@ -4744,7 +4801,7 @@
+ 		for which in arch tune; do
+ 			eval "val=\$with_$which"
+ 			case ${val} in
+-			"" | native | z900 | z990 | z9-109 | z9-ec | z10 | z196 | zEC12 | z13 | z14 | z15 | arch5 | arch6 | arch7 | arch8 | arch9 | arch10 | arch11 | arch12 | arch13 )
++			"" | native | z900 | z990 | z9-109 | z9-ec | z10 | z196 | zEC12 | z13 | z14 | arch5 | arch6 | arch7 | arch8 | arch9 | arch10 | arch11 | arch12 | arch13 )
+ 				# OK
+ 				;;
+ 			*)
+@@ -4942,10 +4999,7 @@
+ 		;;
+ 	i[34567]86-*-dragonfly* | x86_64-*-dragonfly*)
+ 		;;
+-	i[34567]86-*-freebsd*)
+-		;;
+-	x86_64-*-freebsd*)
+-		tmake_file="${tmake_file} i386/t-freebsd64"
++	i[34567]86-*-freebsd* | x86_64-*-freebsd*)
+ 		;;
+ 	ia64*-*-linux*)
+ 		;;
+diff -Nur gcc-9.3.0/libgcc/config/arm/bpabi-lib.h gcc-9.3.0-patched/libgcc/config/arm/bpabi-lib.h
+--- gcc-9.3.0/libgcc/config/arm/bpabi-lib.h	2020-03-12 07:07:23.000000000 -0400
++++ gcc-9.3.0-patched/libgcc/config/arm/bpabi-lib.h	2021-06-01 11:48:30.907889648 -0400
+@@ -1,6 +1,6 @@
+ /* Configuration file for ARM BPABI targets, library renames.
+    Copyright (C) 2010-2019 Free Software Foundation, Inc.
+-   Contributed by CodeSourcery, LLC   
++   Contributed by CodeSourcery, LLC
+ 
+    This file is part of GCC.
+ 
+@@ -25,13 +25,11 @@
+ 
+ /* Make __aeabi_AEABI_NAME an alias for __GCC_NAME.  */
+ #define RENAME_LIBRARY(GCC_NAME, AEABI_NAME)		\
+-  typeof (__##GCC_NAME) __aeabi_##AEABI_NAME \
++  __typeof__ (__##GCC_NAME) __aeabi_##AEABI_NAME \
+     __attribute__((alias ("__" #GCC_NAME)));
+ 
+ /* Give some libgcc functions an additional __aeabi name.  */
+-#ifdef L_muldi3
+-#define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (muldi3, lmul)
+-#endif
++
+ #ifdef L_muldi3
+ #define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (muldi3, lmul)
+ #endif
+diff -Nur gcc-9.3.0/libgcc/config/arm/lib1funcs.S gcc-9.3.0-patched/libgcc/config/arm/lib1funcs.S
+--- gcc-9.3.0/libgcc/config/arm/lib1funcs.S	2020-03-12 07:07:23.000000000 -0400
++++ gcc-9.3.0-patched/libgcc/config/arm/lib1funcs.S	2021-06-01 11:48:30.907889648 -0400
+@@ -345,7 +345,12 @@
+ 
+ /* Function start macros.  Variants for ARM and Thumb.  */
+ 
+-#ifdef __thumb__
++/* Force ARM mode for _dvmd_nto as the div by zero handler is ARM only */
++#if defined(__QNXNTO__) && defined(L_dvmd_nto)
++#define THUMB_FUNC
++#define THUMB_CODE
++#define THUMB_SYNTAX
++#elif defined(__thumb__)
+ #define THUMB_FUNC .thumb_func
+ #define THUMB_CODE .force_thumb
+ # if defined(__thumb2__)
+@@ -359,8 +364,12 @@
+ #define THUMB_SYNTAX
+ #endif
+ 
+-.macro FUNC_START name
++.macro FUNC_START name sp_section=
++  .ifc \sp_section, function_section
++	.section	.text.__\name,"ax",%progbits
++  .else
+ 	.text
++  .endif
+ 	.globl SYM (__\name)
+ 	TYPE (__\name)
+ 	.align 0
+@@ -386,8 +395,8 @@
+ #if defined(__thumb2__)
+ 
+ /* For Thumb-2 we build everything in thumb mode.  */
+-.macro ARM_FUNC_START name
+-       FUNC_START \name
++.macro ARM_FUNC_START name sp_section=
++       FUNC_START \name \sp_section
+        .syntax unified
+ .endm
+ #define EQUIV .thumb_set
+@@ -397,6 +406,7 @@
+ 
+ #elif defined(__INTERWORKING_STUBS__)
+ 
++
+ .macro	ARM_FUNC_START name
+ 	FUNC_START \name
+ 	bx	pc
+@@ -404,7 +414,7 @@
+ 	.arm
+ /* A hook to tell gdb that we've switched to ARM mode.  Also used to call
+    directly from other local arm routines.  */
+-_L__\name:		
++_L__\name:
+ .endm
+ #define EQUIV .thumb_set
+ /* Branch directly to a function declared with ARM_FUNC_START.
+@@ -418,8 +428,12 @@
+ #ifdef NOT_ISA_TARGET_32BIT
+ #define EQUIV .thumb_set
+ #else
+-.macro	ARM_FUNC_START name
++.macro	ARM_FUNC_START name sp_section=
++  .ifc \sp_section, function_section
++	.section	.text.__\name,"ax",%progbits
++  .else
+ 	.text
++  .endif
+ 	.globl SYM (__\name)
+ 	TYPE (__\name)
+ 	.align 0
+@@ -463,7 +477,7 @@
+ #define xxl r0
+ #define yyh r3
+ #define yyl r2
+-#endif	
++#endif
+ 
+ #ifdef __ARM_EABI__
+ .macro	WEAK name
+@@ -490,7 +504,7 @@
+ 
+ /* ------------------------------------------------------------------------ */
+ /*		Bodies of the division and modulo routines.		    */
+-/* ------------------------------------------------------------------------ */	
++/* ------------------------------------------------------------------------ */
+ .macro ARM_DIV_BODY dividend, divisor, result, curbit
+ 
+ #if defined (__ARM_FEATURE_CLZ) && ! defined (__OPTIMIZE_SIZE__)
+@@ -543,7 +557,7 @@
+ 	mov	\divisor, \divisor, lsl \result
+ 	mov	\curbit, \curbit, lsl \result
+ 	mov	\result, #0
+-	
++
+ #else /* !defined (__ARM_FEATURE_CLZ) */
+ 
+ 	@ Initially shift the divisor left 3 bits if possible,
+@@ -557,7 +571,7 @@
+ 
+ 	@ Unless the divisor is very big, shift it up in multiples of
+ 	@ four bits, since this is the amount of unwinding in the main
+-	@ division loop.  Continue shifting until the divisor is 
++	@ division loop.  Continue shifting until the divisor is
+ 	@ larger than the dividend.
+ 1:	cmp	\divisor, #0x10000000
+ 	cmplo	\divisor, \dividend
+@@ -603,7 +617,7 @@
+ #endif /* !defined (__ARM_FEATURE_CLZ) || defined (__OPTIMIZE_SIZE__) */
+ 
+ .endm
+-/* ------------------------------------------------------------------------ */	
++/* ------------------------------------------------------------------------ */
+ .macro ARM_DIV2_ORDER divisor, order
+ 
+ #if defined (__ARM_FEATURE_CLZ)
+@@ -658,14 +672,14 @@
+ 	clz	\spare, \dividend
+ 	sub	\order, \order, \spare
+ 	mov	\divisor, \divisor, lsl \order
+-	
++
+ #else /* !defined (__ARM_FEATURE_CLZ) */
+ 
+ 	mov	\order, #0
+ 
+ 	@ Unless the divisor is very big, shift it up in multiples of
+ 	@ four bits, since this is the amount of unwinding in the main
+-	@ division loop.  Continue shifting until the divisor is 
++	@ division loop.  Continue shifting until the divisor is
+ 	@ larger than the dividend.
+ 1:	cmp	\divisor, #0x10000000
+ 	cmplo	\divisor, \dividend
+@@ -730,7 +744,7 @@
+ LSYM(Loop1):
+ 	@ Unless the divisor is very big, shift it up in multiples of
+ 	@ four bits, since this is the amount of unwinding in the main
+-	@ division loop.  Continue shifting until the divisor is 
++	@ division loop.  Continue shifting until the divisor is
+ 	@ larger than the dividend.
+ 	cmp	divisor, work
+ 	bhs	LSYM(Lbignum)
+@@ -755,8 +769,8 @@
+ LSYM(Loop3):
+ 	@ Test for possible subtractions ...
+   .if \modulo
+-	@ ... On the final pass, this may subtract too much from the dividend, 
+-	@ so keep track of which subtractions are done, we can fix them up 
++	@ ... On the final pass, this may subtract too much from the dividend,
++	@ so keep track of which subtractions are done, we can fix them up
+ 	@ afterwards.
+ 	mov	overdone, #0
+ 	cmp	dividend, divisor
+@@ -825,7 +839,7 @@
+ 	orr	result, work
+ LSYM(Lover4):
+   .endif
+-	
++
+ 	cmp	dividend, #0			@ Early termination?
+ 	beq	LSYM(Lover5)
+ 	lsr	curbit,  #4			@ No, any more bits to do?
+@@ -841,8 +855,8 @@
+ 	lsl	work, #28
+ 	and	overdone, work
+ 	beq	LSYM(Lgot_result)
+-	
+-	@ If we terminated early, because dividend became zero, then the 
++
++	@ If we terminated early, because dividend became zero, then the
+ 	@ bit in ip will not be in the bottom nibble, and we should not
+ 	@ perform the additions below.  We must test for this though
+ 	@ (rather relying upon the TSTs to prevent the additions) since
+@@ -852,7 +866,7 @@
+ 	mov	work, #0x7
+ 	tst	curbit, work
+ 	beq	LSYM(Lgot_result)
+-	
++
+ 	mov	curbit, ip
+ 	mov	work, #3
+ 	ror	curbit, work
+@@ -1058,13 +1072,13 @@
+ LSYM(udivsi3_skip_div0_test):
+ 	mov	curbit, #1
+ 	mov	result, #0
+-	
++
+ 	push	{ work }
+ 	cmp	dividend, divisor
+ 	blo	LSYM(Lgot_result)
+ 
+ 	THUMB_DIV_MOD_BODY 0
+-	
++
+ 	mov	r0, result
+ 	pop	{ work }
+ 	RET
+@@ -1104,11 +1118,11 @@
+ 	bls	11f
+ 	tst	r1, r2
+ 	beq	12f
+-	
++
+ 	ARM_DIV_BODY r0, r1, r2, r3
+-	
++
+ 	mov	r0, r2
+-	RET	
++	RET
+ 
+ 11:	do_it	eq, e
+ 	moveq	r0, #1
+@@ -1147,7 +1161,7 @@
+ ARM_FUNC_START aeabi_uidivmod
+ 	cmp	r1, #0
+ 	beq	LSYM(Ldiv0)
+-	mov     r2, r0 
++	mov     r2, r0
+ 	udiv	r0, r0, r1
+ 	mls     r1, r0, r1, r2
+ 	RET
+@@ -1163,7 +1177,7 @@
+ 	RET
+ #endif
+ 	FUNC_END aeabi_uidivmod
+-	
++
+ #endif /* L_udivsi3 */
+ /* ------------------------------------------------------------------------ */
+ #ifdef L_umodsi3
+@@ -1187,16 +1201,16 @@
+ 	mov	curbit, #1
+ 	cmp	dividend, divisor
+ 	bhs	LSYM(Lover10)
+-	RET	
++	RET
+ 
+ LSYM(Lover10):
+ 	push	{ work }
+ 
+ 	THUMB_DIV_MOD_BODY 1
+-	
++
+ 	pop	{ work }
+ 	RET
+-	
++
+ #else  /* ARM version.  */
+ 
+ 	FUNC_START umodsi3
+@@ -1210,11 +1224,11 @@
+ 	RETc(ls)
+ 
+ 	ARM_MOD_BODY r0, r1, r2, r3
+-	
+-	RET	
++
++	RET
+ 
+ #endif /* ARM version.  */
+-	
++
+ 	DIV_FUNC_END umodsi3 unsigned
+ 
+ #endif /* L_umodsi3 */
+@@ -1306,16 +1320,16 @@
+ 	beq	12f
+ 
+ 	ARM_DIV_BODY r3, r1, r0, r2
+-	
++
+ 	cmp	ip, #0
+ 	do_it	mi
+ 	rsbmi	r0, r0, #0
+-	RET	
++	RET
+ 
+ 10:	teq	ip, r0				@ same sign ?
+ 	do_it	mi
+ 	rsbmi	r0, r0, #0
+-	RET	
++	RET
+ 
+ 11:	do_it	lo
+ 	movlo	r0, #0
+@@ -1333,7 +1347,7 @@
+ 	RET
+ 
+ #endif /* ARM version */
+-	
++
+ 	DIV_FUNC_END divsi3 signed
+ 
+ #if defined(__prefer_thumb__)
+@@ -1375,7 +1389,7 @@
+ 	RET
+ #endif
+ 	FUNC_END aeabi_idivmod
+-	
++
+ #endif /* L_divsi3 */
+ /* ------------------------------------------------------------------------ */
+ #ifdef L_modsi3
+@@ -1414,17 +1428,17 @@
+ 	blo	LSYM(Lgot_result)
+ 
+ 	THUMB_DIV_MOD_BODY 1
+-		
++
+ 	pop	{ work }
+ 	cmp	work, #0
+ 	bpl	LSYM(Lover12)
+ 	neg	dividend, dividend
+ LSYM(Lover12):
+ 	pop	{ work }
+-	RET	
++	RET
+ 
+ #else /* ARM version.  */
+-	
++
+ 	FUNC_START modsi3
+ 
+ 	cmp	r1, #0
+@@ -1443,10 +1457,10 @@
+ 
+ 10:	cmp	ip, #0
+ 	rsbmi	r0, r0, #0
+-	RET	
++	RET
+ 
+ #endif /* ARM version */
+-	
++
+ 	DIV_FUNC_END modsi3 signed
+ 
+ #endif /* L_modsi3 */
+@@ -1466,7 +1480,7 @@
+ 	RET
+ 	FUNC_END div0
+ #endif
+-	
++
+ #endif /* L_divmodsi_tools */
+ /* ------------------------------------------------------------------------ */
+ #ifdef L_dvmd_lnx
+@@ -1502,7 +1516,7 @@
+ 	cfi_end	LSYM(Lend_div0)
+ 	FUNC_END div0
+ #endif
+-	
++
+ #endif /* L_dvmd_lnx */
+ #ifdef L_clear_cache
+ #if defined __ARM_EABI__ && defined __linux__
+@@ -1569,6 +1583,35 @@
+ 	RET
+ 	FUNC_END speculation_barrier
+ #endif
++
++/* ------------------------------------------------------------------------ */
++
++#ifdef L_dvmd_nto
++@ QNX nto division-by zero handler.  Used in place of L_dvmd_tls
++
++#ifdef __ARM_EABI__
++        WEAK aeabi_idiv0
++        WEAK aeabi_ldiv0
++        ARM_FUNC_START aeabi_idiv0
++        ARM_FUNC_START aeabi_ldiv0
++#else
++        ARM_FUNC_START div0
++#endif
++
++#ifndef __ARM_EABI__
++        ldr     lr, [sp], #4
++#endif
++        .word   0xe7fffffe
++        RET
++#ifdef __ARM_EABI__
++        FUNC_END aeabi_ldiv0
++        FUNC_END aeabi_idiv0
++#else
++        FUNC_END div0
++#endif
++
++#endif /* L_dvmd_nto */
++
+ /* ------------------------------------------------------------------------ */
+ /* Dword shift operations.  */
+ /* All the following Dword shift variants rely on the fact that
+@@ -1593,7 +1636,7 @@
+ 
+ 	FUNC_START lshrdi3
+ 	FUNC_ALIAS aeabi_llsr lshrdi3
+-	
++
+ #ifdef __thumb__
+ 	lsr	al, r2
+ 	mov	r3, ah
+@@ -1620,12 +1663,12 @@
+ 	FUNC_END lshrdi3
+ 
+ #endif
+-	
++
+ #ifdef L_ashrdi3
+-	
++
+ 	FUNC_START ashrdi3
+ 	FUNC_ALIAS aeabi_lasr ashrdi3
+-	
++
+ #ifdef __thumb__
+ 	lsr	al, r2
+ 	mov	r3, ah
+@@ -1662,7 +1705,7 @@
+ 
+ 	FUNC_START ashldi3
+ 	FUNC_ALIAS aeabi_llsl ashldi3
+-	
++
+ #ifdef __thumb__
+ 	lsl	ah, r2
+ 	mov	r3, al
+@@ -1865,11 +1908,11 @@
+ #endif /* L_clzsi2 */
+ 
+ /* ------------------------------------------------------------------------ */
+-/* These next two sections are here despite the fact that they contain Thumb 
++/* These next two sections are here despite the fact that they contain Thumb
+    assembler because their presence allows interworked code to be linked even
+    when the GCC library is this one.  */
+-		
+-/* Do not build the interworking functions when the target architecture does 
++
++/* Do not build the interworking functions when the target architecture does
+    not support Thumb instructions.  (This can be a multilib option).  */
+ #if defined __ARM_ARCH_4T__ || defined __ARM_ARCH_5T__\
+       || defined __ARM_ARCH_5TE__ || defined __ARM_ARCH_5TEJ__ \
+@@ -1877,12 +1920,12 @@
+ 
+ #if defined L_call_via_rX
+ 
+-/* These labels & instructions are used by the Arm/Thumb interworking code. 
+-   The address of function to be called is loaded into a register and then 
+-   one of these labels is called via a BL instruction.  This puts the 
+-   return address into the link register with the bottom bit set, and the 
++/* These labels & instructions are used by the Arm/Thumb interworking code.
++   The address of function to be called is loaded into a register and then
++   one of these labels is called via a BL instruction.  This puts the
++   return address into the link register with the bottom bit set, and the
+    code here switches to the correct mode before executing the function.  */
+-	
++
+ 	.text
+ 	.align 0
+         .force_thumb
+@@ -1921,10 +1964,10 @@
+ #if defined L_interwork_call_via_rX
+ 
+ /* These labels & instructions are used by the Arm/Thumb interworking code,
+-   when the target address is in an unknown instruction set.  The address 
++   when the target address is in an unknown instruction set.  The address
+    of function to be called is loaded into a register and then one of these
+-   labels is called via a BL instruction.  This puts the return address 
+-   into the link register with the bottom bit set, and the code here 
++   labels is called via a BL instruction.  This puts the return address
++   into the link register with the bottom bit set, and the code here
+    switches to the correct mode before executing the function.  Unfortunately
+    the target code cannot be relied upon to return via a BX instruction, so
+    instead we have to store the resturn address on the stack and allow the
+@@ -1943,7 +1986,7 @@
+    The third, _interwork_r11_call_via_rN(), works in the same way but
+    uses r11 instead of r7.  It is useful if the caller does not really
+    need a frame pointer.  */
+-	
++
+ 	.text
+ 	.align 0
+ 
+@@ -2006,7 +2049,7 @@
+ 	interwork_with_frame r7,\register,_interwork_r7_call_via_\register
+ 	interwork_with_frame r11,\register,_interwork_r11_call_via_\register
+ .endm
+-	
++
+ 	interwork r0
+ 	interwork r1
+ 	interwork r2
+@@ -2021,7 +2064,7 @@
+ 	interwork fp
+ 	interwork ip
+ 	interwork sp
+-	
++
+ 	/* The LR case has to be handled a little differently...  */
+ 	.code 16
+ 
+@@ -2029,7 +2072,7 @@
+ 
+ 	bx 	pc
+ 	nop
+-	
++
+ 	.code 32
+ 	.globl .Lchange_lr
+ .Lchange_lr:
+@@ -2038,9 +2081,9 @@
+ 	mov	ip, lr
+ 	adreq	lr, _arm_return
+ 	bx	ip
+-	
++
+ 	SIZE	(_interwork_call_via_lr)
+-	
++
+ #endif /* L_interwork_call_via_rX */
+ #endif /* !__thumb2__ */
+ 
+@@ -2050,7 +2093,7 @@
+    of 32-bit entires).  They are only permitted to clobber r12
+    and r14 and r0 must be preserved on exit.  */
+ #ifdef L_thumb1_case_sqi
+-	
++
+ 	.text
+ 	.align 0
+         .force_thumb
+@@ -2069,7 +2112,7 @@
+ #endif
+ 
+ #ifdef L_thumb1_case_uqi
+-	
++
+ 	.text
+ 	.align 0
+         .force_thumb
+@@ -2088,7 +2131,7 @@
+ #endif
+ 
+ #ifdef L_thumb1_case_shi
+-	
++
+ 	.text
+ 	.align 0
+         .force_thumb
+@@ -2108,7 +2151,7 @@
+ #endif
+ 
+ #ifdef L_thumb1_case_uhi
+-	
++
+ 	.text
+ 	.align 0
+         .force_thumb
+@@ -2128,7 +2171,7 @@
+ #endif
+ 
+ #ifdef L_thumb1_case_si
+-	
++
+ 	.text
+ 	.align 0
+         .force_thumb
+@@ -2149,7 +2192,6 @@
+ #endif
+ 
+ #endif /* Arch supports thumb.  */
+-
+ .macro CFI_START_FUNCTION
+ 	.cfi_startproc
+ 	.cfi_remember_state
+diff -Nur gcc-9.3.0/libgcc/config/arm/t-nto gcc-9.3.0-patched/libgcc/config/arm/t-nto
+--- gcc-9.3.0/libgcc/config/arm/t-nto	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/libgcc/config/arm/t-nto	2021-06-01 11:48:30.915889553 -0400
+@@ -0,0 +1,64 @@
++CRTSTUFF_T_CFLAGS = -fno-omit-frame-pointer $(PICFLAG) -DCRTSTUFFS_O
++#SHLIB_SOVERSION = 9.1
++SHLIB_LDFLAGS = -Wl,--soname=$(SHLIB_SONAME)
++
++#SHLIB_LC = 
++
++# add std and BPABI names
++SHLIB_MAPFILES = libgcc-std.ver $(srcdir)/config/arm/libgcc-bpabi.ver
++
++LIB2ADD += \
++	$(srcdir)/config/arm/bpabi.c \
++	$(srcdir)/config/arm/unaligned-funcs.c
++
++LIB2ADD_ST += $(srcdir)/config/arm/fp16.c
++
++LIB1ASMSRC = arm/lib1funcs.S
++
++# Use QNX divide-by-zero handler
++# add the various asm funcs and their aliases
++LIB1ASMFUNCS := \
++	_call_via_rX _interwork_call_via_rX _dvmd_nto \
++	\
++	_thumb1_case_sqi _thumb1_case_uqi _thumb1_case_shi \
++	_thumb1_case_uhi _thumb1_case_si _speculation_barrier \
++	\
++	_aeabi_lcmp _aeabi_ulcmp _aeabi_ldivmod _aeabi_uldivmod \
++	\
++	_udivsi3 _umodsi3 _divsi3 _modsi3 \
++	_lshrdi3 _ashrdi3 _ashldi3 \
++	_clzsi2 _clzdi2 _ctzsi2 \
++	\
++	_arm_addsubsf3 _arm_muldivsf3 _divsf3 _cmpsf2 \
++	_arm_unordsf2 _arm_fixsfsi _arm_fixunssfsi _arm_addsubdf3 \
++	\
++	muldi3 fixdfdi fixunsdfdi fixsfdi fixunssfdi
++	
++# how old is the bug referring to gcc aliasing? maybe fixed already?
++HOST_LIBGCC2_CFLAGS += -fomit-frame-pointer
++#-fno-inline
++
++LIBGCC2_DEBUG_CFLAGS = -g0
++
++# On ARM, specifying -fnon-call-exceptions will needlessly pull in
++# the unwinder in simple programs which use 64-bit division.  Omitting
++# the option is safe.
++LIB2_DIVMOD_EXCEPTION_FLAGS := -fexceptions
++
++# Include the gcc personality routine
++LIB2ADDEH = $(srcdir)/config/arm/unwind-arm.c $(srcdir)/config/arm/pr-support.c
++
++HAVE_CMSE:=$(findstring __ARM_FEATURE_CMSE,$(shell $(gcc_compile_bare) -dM -E - </dev/null))
++ifneq ($(shell $(gcc_compile_bare) -E -mcmse - </dev/null 2>/dev/null),)
++CMSE_OPTS:=-mcmse
++endif
++
++ifdef HAVE_CMSE
++libgcc-objects += cmse.o cmse_nonsecure_call.o
++
++cmse.o: $(srcdir)/config/arm/cmse.c
++	$(gcc_compile) -c $(CMSE_OPTS) $<
++cmse_nonsecure_call.o: $(srcdir)/config/arm/cmse_nonsecure_call.S
++		       $(gcc_compile) -c $<
++endif
++
+diff -Nur gcc-9.3.0/libgcc/config/arm/unwind-arm.h gcc-9.3.0-patched/libgcc/config/arm/unwind-arm.h
+--- gcc-9.3.0/libgcc/config/arm/unwind-arm.h	2020-03-12 07:07:23.000000000 -0400
++++ gcc-9.3.0-patched/libgcc/config/arm/unwind-arm.h	2021-06-01 11:48:30.915889553 -0400
+@@ -49,7 +49,7 @@
+ 	return 0;
+ 
+ #if (defined(linux) && !defined(__uClinux__)) || defined(__NetBSD__) \
+-    || defined(__FreeBSD__) || defined(__fuchsia__)
++    || defined(__FreeBSD__) || defined(__fuchsia__)|| defined(__QNXNTO__)
+       /* Pc-relative indirect.  */
+ #define _GLIBCXX_OVERRIDE_TTYPE_ENCODING (DW_EH_PE_pcrel | DW_EH_PE_indirect)
+       tmp += ptr;
+diff -Nur gcc-9.3.0/libgcc/config/t-posix-thread gcc-9.3.0-patched/libgcc/config/t-posix-thread
+--- gcc-9.3.0/libgcc/config/t-posix-thread	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/libgcc/config/t-posix-thread	2021-06-01 11:48:30.907889648 -0400
+@@ -0,0 +1,3 @@
++# This is currently needed to compile libgcc2 for threads support
++HOST_LIBGCC2_CFLAGS += -pthread
++
+diff -Nur gcc-9.3.0/libgcc/config.host gcc-9.3.0-patched/libgcc/config.host
+--- gcc-9.3.0/libgcc/config.host	2020-03-12 07:07:23.000000000 -0400
++++ gcc-9.3.0-patched/libgcc/config.host	2021-06-01 11:48:30.907889648 -0400
+@@ -93,7 +93,7 @@
+ 	;;
+ amdgcn*-*-*)
+ 	cpu_type=gcn
+-	tmake_file="${tmake_file} t-softfp-sfdf t-softfp"
++	tmake_file="${tmake_file} t-softfp"
+ 	;;
+ arc*-*-*)
+ 	cpu_type=arc
+@@ -103,7 +103,7 @@
+ 	;;
+ avr-*-*)
+ 	cpu_type=avr
+-	;;    
++	;;
+ bfin*-*)
+ 	cpu_type=bfin
+ 	;;
+@@ -256,6 +256,17 @@
+   tmake_file="$tmake_file t-lynx $cpu_type/t-crtstuff t-crtstuff-pic t-libgcc-pic"
+   extra_parts="crtbegin.o crtbeginS.o crtend.o crtendS.o"
+   ;;
++*-*-qnx*)
++  tmake_file="${tmake_file} t-libgcc-pic t-slibgcc t-slibgcc-elf-ver"
++  tmake_file="${tmake_file} t-slibgcc-gld t-crtstuff-pic"
++  extra_parts="${extra_parts} crtbegin.o crtend.o crtbeginS.o crtendS.o"
++  extra_parts="${extra_parts} crtbeginT.o crti.o crtn.o"
++  case ${target_thread_file} in
++    posix)
++      tmake_file="${tmake_file} t-posix-thread"
++      ;;
++  esac
++  ;;
+ *-*-netbsd*)
+   tmake_file="$tmake_file t-crtstuff-pic t-libgcc-pic t-eh-dw2-dip"
+   tmake_file="$tmake_file t-slibgcc t-slibgcc-gld t-slibgcc-elf-ver"
+@@ -360,6 +371,11 @@
+ 	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
+ 	tmake_file="${tmake_file} ${cpu_type}/t-softfp t-softfp"
+ 	;;
++aarch64*-*-qnx*)
++	tmake_file="${tmake_file} ${cpu_type}/t-aarch64 t-slibgcc ${cpu_type}/t-nto"
++	tmake_file="${tmake_file} ${cpu_type}/t-softfp t-softfp"
++	md_unwind_header=aarch64/aarch64-unwind.h
++	;;
+ aarch64*-*-linux*)
+ 	extra_parts="$extra_parts crtfastmath.o"
+ 	md_unwind_header=aarch64/linux-unwind.h
+@@ -440,8 +456,8 @@
+ 	tmake_file="${tmake_file} arm/t-elf arm/t-bpabi arm/t-linux-eabi t-slibgcc-libgcc"
+ 	tm_file="$tm_file arm/bpabi-lib.h"
+ 	unwind_header=config/arm/unwind-arm.h
+-	tmake_file="$tmake_file t-softfp-sfdf t-softfp-excl arm/t-softfp t-softfp"
+-	extra_parts="$extra_parts crtfastmath.o"
++	tmake_file="${tmake_file} t-softfp-sfdf t-softfp-excl arm/t-softfp t-softfp"
++	extra_parts="${extra_parts} crtfastmath.o"
+ 	;;
+ arm*-*-uclinux*)		# ARM ucLinux
+ 	tmake_file="${tmake_file} t-fixedpoint-gnu-prefix t-crtfm"
+@@ -472,10 +488,18 @@
+ 	  # Symbian OS provides its own startup code.
+ 	  ;;
+ 	esac
+-	tmake_file="$tmake_file t-softfp-sfdf t-softfp-excl arm/t-softfp t-softfp"
++	tmake_file="$tmake_file t-softfp-sfdf t-softfp-excl t-softfp"
+ 	extra_parts="$extra_parts crtfastmath.o"
+ 	unwind_header=config/arm/unwind-arm.h
+ 	;;
++arm*-*-qnx*eabi*)
++	tm_file="${tm_file} arm/bpabi-lib.h"
++	tmake_file="${tmake_file} t-crtfm t-fixedpoint-gnu-prefix"
++	tmake_file="${tmake_file} t-softfp-sfdf t-hardfp-sfdf arm/t-nto"
++	tm_define="${tm_define} __ARM_EABI__ __thumb__"
++	extra_parts="${extra_parts} crtfastmath.o"
++	unwind_header=config/arm/unwind-arm.h
++	;;
+ avr-*-*)
+ 	# Make HImode functions for AVR
+ 	tmake_file="${cpu_type}/t-avr t-fpbit"
+@@ -695,9 +719,12 @@
+ 	;;
+ i[34567]86-*-lynxos*)
+ 	;;
+-i[34567]86-*-nto-qnx*)
+-	tmake_file="$tmake_file i386/t-nto t-libgcc-pic"
+-	extra_parts=crtbegin.o
++i[34567]86-*-nto* | i[34567]86-*-qnx*)
++	tmake_file="$tmake_file t-slibgcc i386/t-nto i386/t-crtstuff"
++	md_unwind_header=i386/nto-unwind.h
++	;;
++x86_64-*-nto* | x86_64-*-qnx*)
++	tmake_file="$tmake_file t-slibgcc i386/t-nto i386/t-crtstuff"
+ 	;;
+ i[34567]86-*-rtems*)
+ 	tmake_file="$tmake_file i386/t-crtstuff t-softfp-sfdftf i386/32/t-softfp i386/t-softfp t-softfp"
+@@ -853,7 +880,7 @@
+ lm32-*-uclinux*)
+         extra_parts="$extra_parts crtbegin.o crtendS.o crtbeginT.o"
+         tmake_file="lm32/t-lm32 lm32/t-uclinux t-libgcc-pic t-softfp-sfdf t-softfp"
+-	;;	
++	;;
+ m32r-*-elf*)
+ 	tmake_file="$tmake_file m32r/t-m32r t-fdpbit"
+ 	extra_parts="$extra_parts crtinit.o crtfini.o"
+@@ -910,6 +937,9 @@
+ 	;;
+ mips*-*-netbsd*)			# NetBSD/mips, either endian.
+ 	;;
++mips*-*-qnx*)
++	tmake_file="$tmake_file mips/t-nto"
++	;;
+ mips*-*-linux*)				# Linux MIPS, either endian.
+ 	extra_parts="$extra_parts crtfastmath.o"
+ 	tmake_file="${tmake_file} t-crtfm"
+@@ -1072,12 +1102,12 @@
+ 	  md_unwind_header=rs6000/darwin-unwind.h
+ 	  ;;
+ 	esac
+-	tmake_file="$tmake_file rs6000/t-ppc64-fp rs6000/t-ibm-ldouble"
+-	extra_parts="$extra_parts crt2.o crt3_2.o libef_ppc.a dw_ppc.o"
++	tmake_file="$tmake_file rs6000/t-ibm-ldouble"
++	extra_parts="$extra_parts crt2.o"
+ 	;;
+ powerpc64-*-darwin*)
+ 	tmake_file="$tmake_file rs6000/t-darwin64 rs6000/t-ibm-ldouble"
+-	extra_parts="$extra_parts crt2.o crt3_2.o libef_ppc.a dw_ppc.o"
++	extra_parts="$extra_parts crt2.o"
+ 	;;
+ powerpc*-*-freebsd*)
+ 	tmake_file="${tmake_file} rs6000/t-ppccomm rs6000/t-savresfgpr rs6000/t-crtstuff rs6000/t-freebsd t-softfp-sfdf t-softfp-excl t-softfp"
+@@ -1092,6 +1122,9 @@
+ powerpc-*-netbsd*)
+ 	tmake_file="$tmake_file rs6000/t-netbsd rs6000/t-crtstuff"
+ 	;;
++powerpc-*-qnx*)
++	tmake_file="${tmake_file} rs6000/t-ppccomm rs6000/t-savresfgpr rs6000/t-nto t-softfp-sfdf t-softfp-excl t-softfp t-fdpbit"
++	;;
+ powerpc-*-eabispe*)
+ 	tmake_file="${tmake_file} rs6000/t-ppccomm rs6000/t-savresfgpr rs6000/t-crtstuff t-crtstuff-pic t-fdpbit"
+ 	extra_parts="$extra_parts crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o ecrti.o ecrtn.o ncrti.o ncrtn.o"
+@@ -1245,6 +1278,9 @@
+ 	tmake_file="${tmake_file} sh/t-sh t-slibgcc-libgcc sh/t-linux t-fdpbit"
+ 	md_unwind_header=sh/linux-unwind.h
+ 	;;
++sh-*-nto* | sh-*-qnx*)
++	tmake_file="$tmake_file sh/t-sh sh/t-nto t-fdpbit"
++	;;
+ sh-*-netbsdelf* | shl*-*-netbsdelf*)
+ 	tmake_file="$tmake_file sh/t-sh sh/t-netbsd"
+ 
+diff -Nur gcc-9.3.0/libgcc/unwind-dw2-fde-dip.c gcc-9.3.0-patched/libgcc/unwind-dw2-fde-dip.c
+--- gcc-9.3.0/libgcc/unwind-dw2-fde-dip.c	2020-03-12 07:07:23.000000000 -0400
++++ gcc-9.3.0-patched/libgcc/unwind-dw2-fde-dip.c	2021-06-01 11:48:30.907889648 -0400
+@@ -33,8 +33,14 @@
+ #include "tconfig.h"
+ #include "tsystem.h"
+ #if !defined(inhibit_libc) && !defined(__OpenBSD__)
++
++#if defined (__QNX__) || defined (__QNXNTO__)
++#include <sys/elf.h>
++#else
+ #include <elf.h>		/* Get DT_CONFIG.  */
+ #endif
++
++#endif
+ #include "coretypes.h"
+ #include "tm.h"
+ #include "libgcc_tm.h"
+diff -Nur gcc-9.3.0/libstdc++-v3/config/os/qnx/qnx7/ctype_base.h gcc-9.3.0-patched/libstdc++-v3/config/os/qnx/qnx7/ctype_base.h
+--- gcc-9.3.0/libstdc++-v3/config/os/qnx/qnx7/ctype_base.h	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/libstdc++-v3/config/os/qnx/qnx7/ctype_base.h	2021-06-01 11:48:30.919889504 -0400
+@@ -0,0 +1,66 @@
++// Locale support -*- C++ -*-
++
++// Copyright (C) 2002-2019 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// Under Section 7 of GPL version 3, you are granted additional
++// permissions described in the GCC Runtime Library Exception, version
++// 3.1, as published by the Free Software Foundation.
++
++// You should have received a copy of the GNU General Public License and
++// a copy of the GCC Runtime Library Exception along with this program;
++// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++// <http://www.gnu.org/licenses/>.
++
++/** @file bits/ctype_base.h
++ *  This is an internal header file, included by other library headers.
++ *  Do not attempt to use it directly. @headername{locale}
++ */
++
++//
++// ISO C++ 14882: 22.1  Locales
++//
++
++// Information as gleaned from /usr/include/ctype.h.
++
++namespace std _GLIBCXX_VISIBILITY(default)
++{
++_GLIBCXX_BEGIN_NAMESPACE_VERSION
++
++  /// @brief  Base class for ctype.
++  struct ctype_base
++  {
++    // Non-standard typedefs.
++    typedef const unsigned char*	__to_type;
++
++    // NB: Offsets into ctype<char>::_M_table force a particular size
++    // on the mask type. Because of this, we don't use an enum.
++    typedef short		mask;
++    static const mask upper    	= _UP_;
++    static const mask lower 	= _LO_;
++    static const mask alpha 	= _LO_ | _UP_ | _XA_;
++    static const mask digit 	= _DI_;
++    static const mask xdigit 	= _XD_;
++    static const mask space 	= _CN_ | _SP_ | _XS_;
++    static const mask print 	= _DI_ | _LO_ | _PU_ | _SP_ | _UP_ | _XA_;
++    static const mask graph 	= _DI_ | _LO_ | _PU_ | _UP_ | _XA_;
++    static const mask cntrl 	= _BB_;
++    static const mask punct 	= _PU_;
++    static const mask alnum 	= _DI_ | _LO_ | _UP_ | _XA_;
++#if __cplusplus >= 201103L
++    static const mask blank	= _SP_ | _XB_;
++#endif
++  };
++
++_GLIBCXX_END_NAMESPACE_VERSION
++} // namespace
+diff -Nur gcc-9.3.0/libstdc++-v3/config/os/qnx/qnx7/ctype_configure_char.cc gcc-9.3.0-patched/libstdc++-v3/config/os/qnx/qnx7/ctype_configure_char.cc
+--- gcc-9.3.0/libstdc++-v3/config/os/qnx/qnx7/ctype_configure_char.cc	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/libstdc++-v3/config/os/qnx/qnx7/ctype_configure_char.cc	2021-06-01 11:48:30.919889504 -0400
+@@ -0,0 +1,97 @@
++// Locale support -*- C++ -*-
++
++// Copyright (C) 2011-2019 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// Under Section 7 of GPL version 3, you are granted additional
++// permissions described in the GCC Runtime Library Exception, version
++// 3.1, as published by the Free Software Foundation.
++
++// You should have received a copy of the GNU General Public License and
++// a copy of the GCC Runtime Library Exception along with this program;
++// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++// <http://www.gnu.org/licenses/>.
++
++/** @file ctype_configure_char.cc */
++
++//
++// ISO C++ 14882: 22.1  Locales
++//
++
++#include <locale>
++#include <cstdlib>
++#include <cstring>
++
++namespace std _GLIBCXX_VISIBILITY(default)
++{
++_GLIBCXX_BEGIN_NAMESPACE_VERSION
++
++// Information as gleaned from /usr/include/ctype.h
++
++  const ctype_base::mask*
++  ctype<char>::classic_table() throw()
++  { return 0; }
++
++  ctype<char>::ctype(__c_locale, const mask* __table, bool __del,
++		     size_t __refs)
++  : facet(__refs), _M_del(__table != 0 && __del),
++  _M_toupper(NULL), _M_tolower(NULL), _M_table(__table ? __table : _Ctype)
++  {
++    memset(_M_widen, 0, sizeof(_M_widen));
++    _M_widen_ok = 0;
++    memset(_M_narrow, 0, sizeof(_M_narrow));
++    _M_narrow_ok = 0;
++  }
++
++  ctype<char>::ctype(const mask* __table, bool __del, size_t __refs)
++  : facet(__refs), _M_del(__table != 0 && __del),
++  _M_toupper(NULL), _M_tolower(NULL), _M_table(__table ? __table : _Ctype)
++  {
++    memset(_M_widen, 0, sizeof(_M_widen));
++    _M_widen_ok = 0;
++    memset(_M_narrow, 0, sizeof(_M_narrow));
++    _M_narrow_ok = 0;
++  }
++
++  char
++  ctype<char>::do_toupper(char __c) const
++  { return ::toupper((int) __c); }
++
++  const char*
++  ctype<char>::do_toupper(char* __low, const char* __high) const
++  {
++    while (__low < __high)
++      {
++	*__low = ::toupper((int) *__low);
++	++__low;
++      }
++    return __high;
++  }
++
++  char
++  ctype<char>::do_tolower(char __c) const
++  { return ::tolower((int) __c); }
++
++  const char*
++  ctype<char>::do_tolower(char* __low, const char* __high) const
++  {
++    while (__low < __high)
++      {
++	*__low = ::tolower((int) *__low);
++	++__low;
++      }
++    return __high;
++  }
++
++_GLIBCXX_END_NAMESPACE_VERSION
++} // namespace
+diff -Nur gcc-9.3.0/libstdc++-v3/config/os/qnx/qnx7/ctype_inline.h gcc-9.3.0-patched/libstdc++-v3/config/os/qnx/qnx7/ctype_inline.h
+--- gcc-9.3.0/libstdc++-v3/config/os/qnx/qnx7/ctype_inline.h	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/libstdc++-v3/config/os/qnx/qnx7/ctype_inline.h	2021-06-01 11:48:30.919889504 -0400
+@@ -0,0 +1,74 @@
++// Locale support -*- C++ -*-
++
++// Copyright (C) 2002-2019 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// Under Section 7 of GPL version 3, you are granted additional
++// permissions described in the GCC Runtime Library Exception, version
++// 3.1, as published by the Free Software Foundation.
++
++// You should have received a copy of the GNU General Public License and
++// a copy of the GCC Runtime Library Exception along with this program;
++// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++// <http://www.gnu.org/licenses/>.
++
++/** @file bits/ctype_inline.h
++ *  This is an internal header file, included by other library headers.
++ *  Do not attempt to use it directly. @headername{locale}
++ */
++
++//
++// ISO C++ 14882: 22.1  Locales
++//
++
++// ctype bits to be inlined go here. Non-inlinable (ie virtual do_*)
++// functions go in ctype.cc
++
++namespace std _GLIBCXX_VISIBILITY(default)
++{
++_GLIBCXX_BEGIN_NAMESPACE_VERSION
++
++  bool
++  ctype<char>::
++  is(mask __m, char __c) const
++  { return _M_table[(unsigned char)(__c)] & __m; }
++
++  const char*
++  ctype<char>::
++  is(const char* __low, const char* __high, mask* __vec) const
++  {
++    while (__low < __high)
++      *__vec++ = _M_table[*__low++];
++    return __high;
++  }
++
++  const char*
++  ctype<char>::
++  scan_is(mask __m, const char* __low, const char* __high) const
++  {
++    while (__low < __high && !this->is(__m, *__low))
++      ++__low;
++    return __low;
++  }
++
++  const char*
++  ctype<char>::
++  scan_not(mask __m, const char* __low, const char* __high) const
++  {
++    while (__low < __high && this->is(__m, *__low) != 0)
++      ++__low;
++    return __low;
++  }
++
++_GLIBCXX_END_NAMESPACE_VERSION
++} // namespace
+diff -Nur gcc-9.3.0/libstdc++-v3/config/os/qnx/qnx7/os_defines.h gcc-9.3.0-patched/libstdc++-v3/config/os/qnx/qnx7/os_defines.h
+--- gcc-9.3.0/libstdc++-v3/config/os/qnx/qnx7/os_defines.h	1969-12-31 19:00:00.000000000 -0500
++++ gcc-9.3.0-patched/libstdc++-v3/config/os/qnx/qnx7/os_defines.h	2021-06-01 11:48:30.919889504 -0400
+@@ -0,0 +1,45 @@
++// Specific definitions for QNX 6.1  -*- C++ -*-
++
++// Copyright (C) 2002-2019 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// Under Section 7 of GPL version 3, you are granted additional
++// permissions described in the GCC Runtime Library Exception, version
++// 3.1, as published by the Free Software Foundation.
++
++// You should have received a copy of the GNU General Public License and
++// a copy of the GCC Runtime Library Exception along with this program;
++// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++// <http://www.gnu.org/licenses/>.
++
++#ifndef _GLIBCXX_OS_DEFINES
++#define _GLIBCXX_OS_DEFINES 1
++
++// System-specific #define, typedefs, corrections, etc, go here.  This
++// file will come before all others.
++
++
++// Neutrino has pthread routines in libc so weak routines are not needed
++#define _GLIBCXX_GTHREAD_USE_WEAK 0
++
++// System-specific #define, typedefs, corrections, etc, go here.  This
++#define _QNX_SOURCE 1
++
++// maybe help with missing/conflicting cmath vs math.h functions
++//#define _GLIBCXX_USE_C99_MATH 1
++//#define _GLIBCXX_USE_DEV_RANDOM 1
++//#define _GLIBCXX_USE_RANDOM_TR1 1
++//#define _GLIBCXX_USE_C99_DYNAMIC 0
++//#define _GLIBCXX_USE_C99_CHECK 1
++
++#endif
+diff -Nur gcc-9.3.0/libstdc++-v3/configure.ac gcc-9.3.0-patched/libstdc++-v3/configure.ac
+--- gcc-9.3.0/libstdc++-v3/configure.ac	2020-03-12 07:07:24.000000000 -0400
++++ gcc-9.3.0-patched/libstdc++-v3/configure.ac	2021-06-01 11:48:30.915889553 -0400
+@@ -309,41 +309,10 @@
+   # First, test for "known" system libraries.  We may be using newlib even
+   # on a hosted environment.
+   if test "x${with_newlib}" = "xyes"; then
++   # our custom QNX uses newlib host because it quiets dynamic linking errors
+     os_include_dir="os/newlib"
+-    AC_DEFINE(HAVE_HYPOT)
+-
+-    # GLIBCXX_CHECK_STDLIB_SUPPORT
+-    AC_DEFINE(HAVE_STRTOF)
+-
+-    AC_DEFINE(HAVE_ACOSF)
+-    AC_DEFINE(HAVE_ASINF)
+-    AC_DEFINE(HAVE_ATAN2F)
+-    AC_DEFINE(HAVE_ATANF)
+-    AC_DEFINE(HAVE_CEILF)
+-    AC_DEFINE(HAVE_COSF)
+-    AC_DEFINE(HAVE_COSHF)
+-    AC_DEFINE(HAVE_EXPF)
+-    AC_DEFINE(HAVE_FABSF)
+-    AC_DEFINE(HAVE_FLOORF)
+-    AC_DEFINE(HAVE_FMODF)
+-    AC_DEFINE(HAVE_FREXPF)
+-    AC_DEFINE(HAVE_LDEXPF)
+-    AC_DEFINE(HAVE_LOG10F)
+-    AC_DEFINE(HAVE_LOGF)
+-    AC_DEFINE(HAVE_MODFF)
+-    AC_DEFINE(HAVE_POWF)
+-    AC_DEFINE(HAVE_SINF)
+-    AC_DEFINE(HAVE_SINHF)
+-    AC_DEFINE(HAVE_SQRTF)
+-    AC_DEFINE(HAVE_TANF)
+-    AC_DEFINE(HAVE_TANHF)
+-
+-    AC_DEFINE(HAVE_ICONV)
+-    AC_DEFINE(HAVE_MEMALIGN)
+-  else
+     GLIBCXX_CROSSCONFIG
+   fi
+-
+   # At some point, we should differentiate between architectures
+   # like x86, which have long double versions, and alpha/powerpc/etc.,
+   # which don't. For the time being, punt.
+@@ -377,7 +346,9 @@
+ # Check for _Unwind_GetIPInfo.
+ GCC_CHECK_UNWIND_GETIPINFO
+ 
++# some headers look for __GLIBXX_HAVE_LINUX_FUTEX
+ GCC_LINUX_FUTEX([AC_DEFINE(HAVE_LINUX_FUTEX, 1, [Define if futex syscall is available.])])
++GCC_LINUX_FUTEX([AC_DEFINE(_GLIBCXX_HAVE_LINUX_FUTEX, 1, [Define if futex syscall is available.])])
+ 
+ GCC_HEADER_STDINT(include/gstdint.h)
+ 
+diff -Nur gcc-9.3.0/libstdc++-v3/configure.host gcc-9.3.0-patched/libstdc++-v3/configure.host
+--- gcc-9.3.0/libstdc++-v3/configure.host	2020-03-12 07:07:24.000000000 -0400
++++ gcc-9.3.0-patched/libstdc++-v3/configure.host	2021-06-01 11:48:30.915889553 -0400
+@@ -132,7 +132,7 @@
+ 
+ # Now look for the file(s) usually tied to a CPU model, and make
+ # default choices for those if they haven't been explicitly set
+-# already.  
++# already.
+ cpu_include_dir=cpu/${try_cpu}
+ 
+ 
+@@ -148,7 +148,7 @@
+ esac
+ 
+ 
+-# Set specific CPU overrides for atomic_word_dir and atomic_flags. 
++# Set specific CPU overrides for atomic_word_dir and atomic_flags.
+ # Most can just use generic.
+ # THIS TABLE IS SORTED.  KEEP IT THAT WAY.
+ case "${host_cpu}" in
+@@ -299,6 +299,9 @@
+     os_include_dir="os/qnx/qnx6.1"
+     c_model=c
+     ;;
++  qnx[789]*)
++    os_include_dir="os/qnx/qnx7"
++    ;;
+   rtems*)
+     # Use libatomic if necessary and avoid libstdc++ specific atomicity support
+     atomicity_dir="cpu/generic/atomicity_builtins"
+@@ -372,6 +375,9 @@
+   powerpc*-*-darwin*)
+     port_specific_symbol_files="\$(srcdir)/../config/os/bsd/darwin/ppc-extra.ver"
+     ;;
++  arm*-*-qnx*)
++    port_specific_symbol_files="\$(srcdir)/../config/os/gnu-linux/arm-eabi-extra.ver"
++    ;;
+   *-*-solaris2.1[0-9])
+     # On Solaris 10 with Solaris ld, there's no COMDAT support.  GNU ld always
+     # provides it, as does Solaris ld since Solaris 11, leading to different
+diff -Nur gcc-9.3.0/libstdc++-v3/crossconfig.m4 gcc-9.3.0-patched/libstdc++-v3/crossconfig.m4
+--- gcc-9.3.0/libstdc++-v3/crossconfig.m4	2020-03-12 07:07:24.000000000 -0400
++++ gcc-9.3.0-patched/libstdc++-v3/crossconfig.m4	2021-06-01 11:48:30.915889553 -0400
+@@ -4,304 +4,137 @@
+ 
+ AC_DEFUN([GLIBCXX_CROSSCONFIG],[
+ # Base decisions on target environment.
++# our custom QNX uses newlib host because it quiets dynamic linking errors
++# configure.ac has been modified to call CROSSCONFIG
+ case "${host}" in
+-  arm*-*-symbianelf*)
+-    # This is a freestanding configuration; there is nothing to do here.
+-    ;;
+-
+-  avr*-*-*)
+-    AC_DEFINE(HAVE_ACOSF)
+-    AC_DEFINE(HAVE_ASINF)
+-    AC_DEFINE(HAVE_ATAN2F)
+-    AC_DEFINE(HAVE_ATANF)
+-    AC_DEFINE(HAVE_CEILF)
+-    AC_DEFINE(HAVE_COSF)
+-    AC_DEFINE(HAVE_COSHF)
+-    AC_DEFINE(HAVE_EXPF)
+-    AC_DEFINE(HAVE_FABSF)
+-    AC_DEFINE(HAVE_FLOORF)
+-    AC_DEFINE(HAVE_FMODF)
+-    AC_DEFINE(HAVE_FREXPF)
+-    AC_DEFINE(HAVE_SQRTF)
+-    AC_DEFINE(HAVE_HYPOTF)
+-    AC_DEFINE(HAVE_LDEXPF)
+-    AC_DEFINE(HAVE_LOG10F)
+-    AC_DEFINE(HAVE_LOGF)
+-    AC_DEFINE(HAVE_MODFF)
+-    AC_DEFINE(HAVE_POWF)
+-    AC_DEFINE(HAVE_SINF)
+-    AC_DEFINE(HAVE_SINHF)
+-    AC_DEFINE(HAVE_TANF)
+-    AC_DEFINE(HAVE_TANHF)
+-    ;;
+-
+-  mips*-sde-elf*)
+-    # These definitions are for the SDE C library rather than newlib.
+-    SECTION_FLAGS='-ffunction-sections -fdata-sections'
+-    AC_SUBST(SECTION_FLAGS)
+-    GLIBCXX_CHECK_COMPILER_FEATURES
+-    GLIBCXX_CHECK_LINKER_FEATURES
+-    GLIBCXX_CHECK_MATH_SUPPORT
+-    GLIBCXX_CHECK_STDLIB_SUPPORT
+-
+-    AC_DEFINE(HAVE_FINITE)
+-    AC_DEFINE(HAVE_HYPOT)
+-    AC_DEFINE(HAVE_ISNAN)
+-    AC_DEFINE(HAVE_ISINF)
+-
+-    AC_DEFINE(HAVE_LDEXPF)
+-    AC_DEFINE(HAVE_MODF)
+-    AC_DEFINE(HAVE_SQRTF)
+-    ;;
+-
+-  spu-*-elf*)
+-    GLIBCXX_CHECK_COMPILER_FEATURES
+-    GLIBCXX_CHECK_LINKER_FEATURES
+-    GLIBCXX_CHECK_MATH_SUPPORT
+-    GLIBCXX_CHECK_STDLIB_SUPPORT
+-    AM_ICONV
+-    ;;
++  *)
++    AC_DEFINE(HAVE_COMPLEX_H)
++    AC_DEFINE(HAVE_ENDIAN_H)
++    AC_DEFINE(HAVE_INTTYPES_H)
++    AC_DEFINE(HAVE_WCHAR_H)
++    AC_DEFINE(HAVE_WCTYPE_H)
++    AC_DEFINE(HAVE_FENV_H)
++    AC_DEFINE(HAVE_FLOAT_H)
++    AC_DEFINE(HAVE_TGMATH_H)
++    AC_DEFINE(HAVE_UNISTD_H)
++    AC_DEFINE(HAVE_STDALIGN_H)
++    AC_DEFINE(HAVE_STDBOOL_H)
++    AC_DEFINE(HAVE_STDINT_H)
++    AC_DEFINE(HAVE_STDLIB_H)
++    AC_DEFINE(HAVE_STRINGS_H)
++    AC_DEFINE(HAVE_STRING_H)
++    AC_DEFINE(HAVE_SYS_IOCTL_H)
++    AC_DEFINE(HAVE_SYS_IPC_H)
++    AC_DEFINE(HAVE_SYS_PARAM_H)
++    AC_DEFINE(HAVE_SYS_RESOURCE_H)
++    AC_DEFINE(HAVE_SYS_SEM_H)
++    AC_DEFINE(HAVE_SYS_STAT_H)
++    AC_DEFINE(HAVE_MEMORY_H)
++    AC_DEFINE(HAVE_LOCALE_H)
++    AC_DEFINE(HAVE_IEEEFP_H)
++
++    # enabled by default?
++#   AC_DEFINE(_GLIBCXX_USE_C99_MATH)
++#		AC_DEFINE(_GLIBCXX_USE_C99_MATH_TR1)
++#   AC_DEFINE(_GLIBCXX_USE_C99_DYNAMIC)
++#   AC_DEFINE(_GLIBCXX_USE_C99_FP_MACROS_DYNAMIC)
++    AC_DEFINE(_GLIBCXX11_USE_C99_COMPLEX)
++    AC_DEFINE(_GLIBCXX_USE_C99_COMPLEX_TR1)
++#    AC_DEFINE(_GLIBCXX_USE_C99_CHECK)
+ 
+-  *-aix*)
+-    GLIBCXX_CHECK_LINKER_FEATURES
+-    GLIBCXX_CHECK_MATH_SUPPORT
+-    GLIBCXX_CHECK_STDLIB_SUPPORT
++#   std::random needs this?
++    AC_DEFINE(_GLIBCXX_USE_C99_STDINT_TR1)
+     AC_DEFINE(_GLIBCXX_USE_DEV_RANDOM)
+     AC_DEFINE(_GLIBCXX_USE_RANDOM_TR1)
+-    # We don't yet support AIX's TLS ABI.
+-    #GCC_CHECK_TLS
+-    AM_ICONV
+-    ;;
+-
+-  *-darwin*)
+-    # Darwin versions vary, but the linker should work in a cross environment,
+-    # so we just check for all the features here.
+-    # Check for available headers.
+-
+-    # Don't call GLIBCXX_CHECK_LINKER_FEATURES, Darwin doesn't have a GNU ld
+-    GLIBCXX_CHECK_MATH_SUPPORT
+-    GLIBCXX_CHECK_STDLIB_SUPPORT
+-    ;;
+-
+-  *djgpp)
+-    # GLIBCXX_CHECK_MATH_SUPPORT
+-    AC_DEFINE(HAVE_ISINF)
+-    AC_DEFINE(HAVE_ISNAN)
+-    AC_DEFINE(HAVE_FINITE)
+-    AC_DEFINE(HAVE_SINCOS)
+-    AC_DEFINE(HAVE_HYPOT)
+-    ;;
+-
+-  *-freebsd*)
+-    SECTION_FLAGS='-ffunction-sections -fdata-sections'
+-    AC_SUBST(SECTION_FLAGS) 
+-    GLIBCXX_CHECK_LINKER_FEATURES
+-    AC_DEFINE(HAVE_SETENV)
+-    AC_DEFINE(HAVE_FINITEF)
+-    AC_DEFINE(HAVE_FINITE)
+-    AC_DEFINE(HAVE_FREXPF)
+-    AC_DEFINE(HAVE_HYPOT)
+-    AC_DEFINE(HAVE_HYPOTF)
+-    AC_DEFINE(HAVE_ISINF)
+-    AC_DEFINE(HAVE_ISNAN)
+-    AC_DEFINE(HAVE_ISNANF)
+ 
++    AC_DEFINE(_GLIBCXX_USE_C99_FENV_TR1)
++    AC_DEFINE(_GLIBCXX_USE_C99_INTTYPES_TR1)
++    AC_DEFINE(_GLIBCXX_USE_C99_INTTYPES_WCHAR_T_TR1)
++
++    # realpath() is considered unsafe
++    # seems to be ignored even with guards enabled. probably by _FORTIFY_SOURCE
++    # AC_DEFINE(_GLIBCXX_USE_REALPATH)
++    AC_DEFINE(_GLIBCXX_USE_LFS)
++    AC_DEFINE(_GLIBCXX_USE_SCHED_YIELD)
++    AC_DEFINE(_GLIBCXX_USE_SC_NPROCESSORS_ONLN)
++    AC_DEFINE(_GLIBCXX_USE_SYSCTL_HW_NCPU)
++    AC_DEFINE(_GLIBCXX_USE_NANOSLEEP)
++    AC_DEFINE(_GLIBCXX_USE_CLOCK_MONOTONIC)
++    AC_DEFINE(_GLIBCXX_USE_CLOCK_REALTIME)
++    AC_DEFINE(_GLIBCXX_USE_FCHMOD)
++    
++    AC_DEFINE(HAVE_LINK)
+     AC_DEFINE(HAVE_ACOSF)
++    AC_DEFINE(HAVE_ACOSL)
+     AC_DEFINE(HAVE_ASINF)
++    AC_DEFINE(HAVE_ASINL)
+     AC_DEFINE(HAVE_ATAN2F)
++    AC_DEFINE(HAVE_ATAN2L)
+     AC_DEFINE(HAVE_ATANF)
++    AC_DEFINE(HAVE_ATANL)
+     AC_DEFINE(HAVE_CEILF)
++    AC_DEFINE(HAVE_CEILL)
+     AC_DEFINE(HAVE_COSF)
+     AC_DEFINE(HAVE_COSHF)
++    AC_DEFINE(HAVE_COSHL)
++    AC_DEFINE(HAVE_COSL)
+     AC_DEFINE(HAVE_EXPF)
++    AC_DEFINE(HAVE_EXPL)
+     AC_DEFINE(HAVE_FABSF)
++    AC_DEFINE(HAVE_FABSL)
+     AC_DEFINE(HAVE_FLOORF)
++    AC_DEFINE(HAVE_FLOORL)
+     AC_DEFINE(HAVE_FMODF)
++    AC_DEFINE(HAVE_FMODL)
+     AC_DEFINE(HAVE_FREXPF)
++    AC_DEFINE(HAVE_FREXPL)
++    AC_DEFINE(HAVE_GETIPINFO)
++    AC_DEFINE(HAVE_GETS)
++    AC_DEFINE(HAVE_HYPOT)
++    AC_DEFINE(HAVE_HYPOTF)
++    AC_DEFINE(HAVE_HYPOTL)
++    AC_DEFINE(HAVE_ICONV)
++    AC_DEFINE(HAVE_INT64_T)
++    AC_DEFINE(HAVE_INT64_T_LONG_LONG)
++    AC_DEFINE(HAVE_LC_MESSAGES)
+     AC_DEFINE(HAVE_LDEXPF)
++    AC_DEFINE(HAVE_LDEXPL)
+     AC_DEFINE(HAVE_LOG10F)
++    AC_DEFINE(HAVE_LOG10L)
+     AC_DEFINE(HAVE_LOGF)
++    AC_DEFINE(HAVE_LOGL)
++    AC_DEFINE(HAVE_MBSTATE_T)
+     AC_DEFINE(HAVE_MODFF)
++    AC_DEFINE(HAVE_MODFL)
++    AC_DEFINE(HAVE_POLL)
+     AC_DEFINE(HAVE_POWF)
++    AC_DEFINE(HAVE_POWL)
+     AC_DEFINE(HAVE_SINF)
+     AC_DEFINE(HAVE_SINHF)
++    AC_DEFINE(HAVE_SINHL)
++    AC_DEFINE(HAVE_SINL)
++    AC_DEFINE(HAVE_SLEEP)
+     AC_DEFINE(HAVE_SQRTF)
++    AC_DEFINE(HAVE_SQRTL)
++    AC_DEFINE(HAVE_STRERROR_R)
++    AC_DEFINE(HAVE_S_ISREG)
+     AC_DEFINE(HAVE_TANF)
+     AC_DEFINE(HAVE_TANHF)
+-    if test x"long_double_math_on_this_cpu" = x"yes"; then
+-      AC_DEFINE(HAVE_FINITEL)
+-      AC_DEFINE(HAVE_ISINFL)
+-      AC_DEFINE(HAVE_ISNANL)
+-    fi
+-    AC_CHECK_FUNCS(__cxa_thread_atexit)
+-    AC_CHECK_FUNCS(aligned_alloc posix_memalign memalign _aligned_malloc)
+-    AC_CHECK_FUNCS(timespec_get)
+-    AC_CHECK_FUNCS(sockatmark)
+-    ;;
+-
+-  *-fuchsia*)
+-    SECTION_FLAGS='-ffunction-sections -fdata-sections'
+-    AC_SUBST(SECTION_FLAGS)
+-    ;;
+-
+-  *-hpux*)
+-    SECTION_FLAGS='-ffunction-sections -fdata-sections'
+-    AC_SUBST(SECTION_FLAGS)
+-    GLIBCXX_CHECK_LINKER_FEATURES
+-
+-    # GLIBCXX_CHECK_MATH_SUPPORT
+-    AC_DEFINE(HAVE_ISNAN)
+-    AC_DEFINE(HAVE_HYPOT)
+-    AC_DEFINE(HAVE_ACOSF)
+-    AC_DEFINE(HAVE_ASINF)
+-    AC_DEFINE(HAVE_ATANF)
+-    AC_DEFINE(HAVE_COSF)
+-    AC_DEFINE(HAVE_COSHF)
+-    AC_DEFINE(HAVE_SINF)
+-    AC_DEFINE(HAVE_SINHF)
+-    AC_DEFINE(HAVE_TANF)
+-    AC_DEFINE(HAVE_TANHF)
+-    AC_DEFINE(HAVE_EXPF)
+-    AC_DEFINE(HAVE_ATAN2F)
+-    AC_DEFINE(HAVE_FABSF)
+-    AC_DEFINE(HAVE_FMODF)
+-    AC_DEFINE(HAVE_FREXPF)
+-    AC_DEFINE(HAVE_LOGF)
+-    AC_DEFINE(HAVE_LOG10F)
+-    AC_DEFINE(HAVE_MODF)
+-    AC_DEFINE(HAVE_POWF)
+-    AC_DEFINE(HAVE_SQRTF)
+-
+-    # GLIBCXX_CHECK_STDLIB_SUPPORT
+-    AC_DEFINE(HAVE_STRTOLD)
++    AC_DEFINE(HAVE_TANHL)
++    AC_DEFINE(HAVE_TANL)
++    AC_DEFINE(HAVE_TRUNCATE)
++    AC_DEFINE(HAVE_USLEEP)
++    AC_DEFINE(HAVE_WRITEV)
+ 
+-    GCC_CHECK_TLS
+-    case "$target" in
+-      *-hpux10*)
+-	AC_DEFINE(HAVE_ISINF)
+-	AC_DEFINE(HAVE_ISINFF)
+-	AC_DEFINE(HAVE_ISNANF)
+-	AC_DEFINE(HAVE_FINITE)
+-	AC_DEFINE(HAVE_FINITEF)
+-	;;
+-    esac
+-    ;;
+-  *-linux* | *-uclinux* | *-gnu* | *-kfreebsd*-gnu | *-cygwin* | *-solaris*)
+-    GLIBCXX_CHECK_COMPILER_FEATURES
+-    GLIBCXX_CHECK_LINKER_FEATURES
+     GLIBCXX_CHECK_MATH_SUPPORT
+     GLIBCXX_CHECK_STDLIB_SUPPORT
+-    AC_DEFINE(_GLIBCXX_USE_DEV_RANDOM)
+-    AC_DEFINE(_GLIBCXX_USE_RANDOM_TR1)
+-    GCC_CHECK_TLS
+-    AC_CHECK_FUNCS(__cxa_thread_atexit_impl)
+-    AC_CHECK_FUNCS(aligned_alloc posix_memalign memalign _aligned_malloc)
+-    AC_CHECK_FUNCS(timespec_get)
+-    AC_CHECK_FUNCS(sockatmark)
+-    AM_ICONV
+-    ;;
+-  *-mingw32*)
+-    GLIBCXX_CHECK_LINKER_FEATURES
+-    GLIBCXX_CHECK_MATH_SUPPORT
+-    GLIBCXX_CHECK_STDLIB_SUPPORT
+-    AC_CHECK_FUNCS(aligned_alloc posix_memalign memalign _aligned_malloc)
+-    AC_CHECK_FUNCS(_wfopen)
+-    ;;
+-  *-netbsd* | *-openbsd*)
+-    SECTION_FLAGS='-ffunction-sections -fdata-sections'
+-    AC_SUBST(SECTION_FLAGS) 
++    GLIBCXX_CHECK_COMPILER_FEATURES
+     GLIBCXX_CHECK_LINKER_FEATURES
+-    AC_DEFINE(HAVE_FINITEF)
+-    AC_DEFINE(HAVE_FINITE)
+-    AC_DEFINE(HAVE_FREXPF)
+-    AC_DEFINE(HAVE_HYPOTF)
+-    AC_DEFINE(HAVE_ISINF)
+-    AC_DEFINE(HAVE_ISINFF)
+-    AC_DEFINE(HAVE_ISNAN)
+-    AC_DEFINE(HAVE_ISNANF)
+-    if test x"long_double_math_on_this_cpu" = x"yes"; then
+-      AC_DEFINE(HAVE_FINITEL)
+-      AC_DEFINE(HAVE_ISINFL)
+-      AC_DEFINE(HAVE_ISNANL)
+-    fi
+-    AC_CHECK_FUNCS(aligned_alloc posix_memalign memalign _aligned_malloc)
++
++    # no aligned_alloc in qnx
++    AC_CHECK_FUNCS(__cxa_thread_atexit_impl __cxa_thread_atexit)
+     AC_CHECK_FUNCS(timespec_get)
+     AC_CHECK_FUNCS(sockatmark)
+     ;;
+-  *-qnx6.1* | *-qnx6.2*)
+-    SECTION_FLAGS='-ffunction-sections -fdata-sections'
+-    AC_SUBST(SECTION_FLAGS) 
+-    GLIBCXX_CHECK_LINKER_FEATURES
+-    AC_DEFINE(HAVE_COSF)
+-    AC_DEFINE(HAVE_COSL)
+-    AC_DEFINE(HAVE_COSHF)
+-    AC_DEFINE(HAVE_COSHL)
+-    AC_DEFINE(HAVE_LOGF)
+-    AC_DEFINE(HAVE_LOGL)
+-    AC_DEFINE(HAVE_LOG10F)
+-    AC_DEFINE(HAVE_LOG10L)
+-    AC_DEFINE(HAVE_SINF)
+-    AC_DEFINE(HAVE_SINL)
+-    AC_DEFINE(HAVE_SINHF)
+-    AC_DEFINE(HAVE_SINHL)
+-    ;;
+-  *-rtems*)
+-    GLIBCXX_CHECK_COMPILER_FEATURES
+-    GLIBCXX_CHECK_LINKER_FEATURES
+-    GLIBCXX_CHECK_MATH_SUPPORT
+-    GLIBCXX_CHECK_STDLIB_SUPPORT
+-    ;;
+-  *-tpf)
+-    SECTION_FLAGS='-ffunction-sections -fdata-sections'
+-    SECTION_LDFLAGS='-Wl,--gc-sections $SECTION_LDFLAGS'
+-    AC_SUBST(SECTION_FLAGS)
+-    AC_DEFINE(HAVE_FINITE)
+-    AC_DEFINE(HAVE_FINITEF)
+-    AC_DEFINE(HAVE_FREXPF)
+-    AC_DEFINE(HAVE_HYPOTF)
+-    AC_DEFINE(HAVE_ISINF)
+-    AC_DEFINE(HAVE_ISINFF)
+-    AC_DEFINE(HAVE_ISNAN)
+-    AC_DEFINE(HAVE_ISNANF)
+-    AC_DEFINE(HAVE_SINCOS)
+-    AC_DEFINE(HAVE_SINCOSF)
+-    if test x"long_double_math_on_this_cpu" = x"yes"; then
+-      AC_DEFINE(HAVE_FINITEL)
+-      AC_DEFINE(HAVE_HYPOTL)
+-      AC_DEFINE(HAVE_ISINFL)
+-      AC_DEFINE(HAVE_ISNANL)
+-    fi
+-    ;;
+-  *-*vms*)
+-    # Check for available headers.
+-    # Don't call GLIBCXX_CHECK_LINKER_FEATURES, VMS doesn't have a GNU ld
+-    GLIBCXX_CHECK_MATH_SUPPORT
+-    GLIBCXX_CHECK_STDLIB_SUPPORT
+-    ;;
+-  *-vxworks)
+-    AC_DEFINE(HAVE_ACOSF)
+-    AC_DEFINE(HAVE_ASINF)
+-    AC_DEFINE(HAVE_ATAN2F)
+-    AC_DEFINE(HAVE_ATANF)
+-    AC_DEFINE(HAVE_CEILF)
+-    AC_DEFINE(HAVE_COSF)
+-    AC_DEFINE(HAVE_COSHF)
+-    AC_DEFINE(HAVE_EXPF)
+-    AC_DEFINE(HAVE_FABSF)
+-    AC_DEFINE(HAVE_FLOORF)
+-    AC_DEFINE(HAVE_FMODF)
+-    AC_DEFINE(HAVE_HYPOT)
+-    AC_DEFINE(HAVE_LOG10F)
+-    AC_DEFINE(HAVE_LOGF)
+-    AC_DEFINE(HAVE_POWF)
+-    AC_DEFINE(HAVE_SINF)
+-    AC_DEFINE(HAVE_SINHF)
+-    AC_DEFINE(HAVE_SQRTF)
+-    AC_DEFINE(HAVE_TANF)
+-    AC_DEFINE(HAVE_TANHF)
+-    ;;
+-  *)
+-    AC_MSG_ERROR([No support for this host/target combination.])
+-   ;;
+ esac
+ ])
+diff -Nur gcc-9.3.0/libstdc++-v3/src/c++11/system_error.cc gcc-9.3.0-patched/libstdc++-v3/src/c++11/system_error.cc
+--- gcc-9.3.0/libstdc++-v3/src/c++11/system_error.cc	2020-03-12 07:07:24.000000000 -0400
++++ gcc-9.3.0-patched/libstdc++-v3/src/c++11/system_error.cc	2021-06-01 11:48:30.919889504 -0400
+@@ -98,7 +98,8 @@
+ #ifdef EAGAIN
+       case EAGAIN:
+ #endif
+-#ifdef EALREADY
++// QNX uses same value for EBUSY and EALREADY
++#if defined(EALREADY) && !defined(__QNXNTO__) && !defined(__QNX__)
+       case EALREADY:
+ #endif
+ #ifdef EBADF
+diff -Nur gcc-9.3.0/libtool.m4 gcc-9.3.0-patched/libtool.m4
+--- gcc-9.3.0/libtool.m4	2020-03-12 07:07:25.000000000 -0400
++++ gcc-9.3.0-patched/libtool.m4	2021-06-01 11:48:30.919889504 -0400
+@@ -1137,7 +1137,7 @@
+ # Invoke $ECHO with all args, space-separated.
+ func_echo_all ()
+ {
+-    $ECHO "$*" 
++    $ECHO "$*"
+ }
+ 
+ case "$ECHO" in
+@@ -1749,6 +1749,9 @@
+     ;;
+ 
+   *)
++	# avoid dlopen check when cross-compiling (specify --with-newlib)
++	if test "x${with_newlib}" != "xyes"; then
++
+     AC_CHECK_FUNC([shl_load],
+ 	  [lt_cv_dlopen="shl_load"],
+       [AC_CHECK_LIB([dld], [shl_load],
+@@ -1766,6 +1769,8 @@
+ 	  ])
+ 	])
+       ])
++	# end newlib escape
++      fi
+     ;;
+   esac
+ 

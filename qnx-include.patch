@@ -1,0 +1,1787 @@
+diff -Nur include/cpp/complex qnx-include/cpp/complex
+--- include/cpp/complex	2021-06-01 11:49:12.491400339 -0400
++++ qnx-include/cpp/complex	2021-06-01 11:49:13.799384977 -0400
+@@ -52,7 +52,7 @@
+ 	static short _Exp(_Ty *_Pleft, _Ty _Right, short _Exponent)
+ 		{	// compute exp(*_Pleft) * _Right * 2 ^ _Exponent
+ 		double _Tmp = (double)*_Pleft;
+-		short _Ans = _CSTD _Exp(&_Tmp, (double)_Right, _Exponent);
++		short _Ans = _CSTD _Exp_(&_Tmp, (double)_Right, _Exponent);
+ 		*_Pleft = (_Ty)_Tmp;
+ 		return (_Ans);
+ 		}
+@@ -65,13 +65,13 @@
+ 	static bool _Isinf(_Ty _Left)
+ 		{	// test for infinity
+ 		double _Tmp = (double)_Left;
+-		return (_CSTD _Dtest(&_Tmp) == _INFCODE);
++		return (_CSTD _Dtest_(&_Tmp) == _INFCODE);
+ 		}
+ 
+ 	static bool _Isnan(_Ty _Left)
+ 		{	// test for NaN
+ 		double _Tmp = (double)_Left;
+-		return (_CSTD _Dtest(&_Tmp) == _NANCODE);
++		return (_CSTD _Dtest_(&_Tmp) == _NANCODE);
+ 		}
+ 
+ 	static _Ty _Nanv(_Ty)
+@@ -81,7 +81,7 @@
+ 
+ 	static _Ty _Sinh(_Ty _Left, _Ty _Right)
+ 		{	// return sinh(_Left) * _Right
+-		return (_CSTD _Sinh((double)_Left, (double)_Right));
++		return (_CSTD _Sinh_((double)_Left, (double)_Right));
+ 		}
+ 
+ 	static _Ty atan2(_Ty _Yval, _Ty _Xval)
+@@ -138,12 +138,12 @@
+ 
+ 	static _Ty _Cosh(_Ty _Left, _Ty _Right)
+ 		{	// return cosh(_Left) * _Right
+-		return (_CSTD _LCosh(_Left, _Right));
++		return (_CSTD _LCosh_(_Left, _Right));
+ 		}
+ 
+ 	static short _Exp(_Ty *_Pleft, _Ty _Right, short _Exponent)
+ 		{	// compute exp(*_Pleft) * _Right * 2 ^ _Exponent
+-		return (_CSTD _LExp(_Pleft, _Right, _Exponent));
++		return (_CSTD _LExp_(_Pleft, _Right, _Exponent));
+ 		}
+ 
+ 	static _Ty _Infv(_Ty)
+@@ -153,12 +153,12 @@
+ 
+ 	static bool _Isinf(_Ty _Left)
+ 		{	// test for infinity
+-		return (_CSTD _LDtest(&_Left) == _INFCODE);
++		return (_CSTD _LDtest_(&_Left) == _INFCODE);
+ 		}
+ 
+ 	static bool _Isnan(_Ty _Left)
+ 		{	// test for NaN
+-		return (_CSTD _LDtest(&_Left) == _NANCODE);
++		return (_CSTD _LDtest_(&_Left) == _NANCODE);
+ 		}
+ 
+ 	static _Ty _Nanv(_Ty)
+@@ -168,7 +168,7 @@
+ 
+ 	static _Ty _Sinh(_Ty _Left, _Ty _Right)
+ 		{	// return sinh(_Left) * _Right
+-		return (_CSTD _LSinh(_Left, _Right));
++		return (_CSTD _LSinh_(_Left, _Right));
+ 		}
+ 
+ 	static _Ty atan2(_Ty _Yval, _Ty _Xval)
+@@ -225,12 +225,12 @@
+ 
+ 	static _Ty _Cosh(_Ty _Left, _Ty _Right)
+ 		{	// return cosh(_Left) * _Right
+-		return (_CSTD _Cosh(_Left, _Right));
++		return (_CSTD _Cosh_(_Left, _Right));
+ 		}
+ 
+ 	static short _Exp(_Ty *_Pleft, _Ty _Right, short _Exponent)
+ 		{	// compute exp(*_Pleft) * _Right * 2 ^ _Exponent
+-		return (_CSTD _Exp(_Pleft, _Right, _Exponent));
++		return (_CSTD _Exp_(_Pleft, _Right, _Exponent));
+ 		}
+ 
+ 	static _Ty _Infv(_Ty)
+@@ -240,12 +240,12 @@
+ 
+ 	static bool _Isinf(_Ty _Left)
+ 		{	// test for infinity
+-		return (_CSTD _Dtest(&_Left) == _INFCODE);
++		return (_CSTD _Dtest_(&_Left) == _INFCODE);
+ 		}
+ 
+ 	static bool _Isnan(_Ty _Left)
+ 		{	// test for NaN
+-		return (_CSTD _Dtest(&_Left) == _NANCODE);
++		return (_CSTD _Dtest_(&_Left) == _NANCODE);
+ 		}
+ 
+ 	static _Ty _Nanv(_Ty)
+@@ -255,7 +255,7 @@
+ 
+ 	static _Ty _Sinh(_Ty _Left, _Ty _Right)
+ 		{	// return sinh(_Left) * _Right
+-		return (_CSTD _Sinh(_Left, _Right));
++		return (_CSTD _Sinh_(_Left, _Right));
+ 		}
+ 
+ 	static _Ty atan2(_Ty _Yval, _Ty _Xval)
+@@ -312,12 +312,12 @@
+ 
+ 	static _Ty _Cosh(_Ty _Left, _Ty _Right)
+ 		{	// return cosh(_Left) * _Right
+-		return (_CSTD _FCosh(_Left, _Right));
++		return (_CSTD _FCosh_(_Left, _Right));
+ 		}
+ 
+ 	static short _Exp(_Ty *_Pleft, _Ty _Right, short _Exponent)
+ 		{	// compute exp(*_Pleft) * _Right * 2 ^ _Exponent
+-		return (_CSTD _FExp(_Pleft, _Right, _Exponent));
++		return (_CSTD _FExp_(_Pleft, _Right, _Exponent));
+ 		}
+ 
+ 	static _Ty _Infv(_Ty)
+@@ -327,12 +327,12 @@
+ 
+ 	static bool _Isinf(_Ty _Left)
+ 		{	// test for infinity
+-		return (_CSTD _FDtest(&_Left) == _INFCODE);
++		return (_CSTD _FDtest_(&_Left) == _INFCODE);
+ 		}
+ 
+ 	static bool _Isnan(_Ty _Left)
+ 		{	// test for NaN
+-		return (_CSTD _FDtest(&_Left) == _NANCODE);
++		return (_CSTD _FDtest_(&_Left) == _NANCODE);
+ 		}
+ 
+ 	static _Ty _Nanv(_Ty)
+@@ -342,7 +342,7 @@
+ 
+ 	static _Ty _Sinh(_Ty _Left, _Ty _Right)
+ 		{	// return sinh(_Left) * _Right
+-		return (_CSTD _FSinh(_Left, _Right));
++		return (_CSTD _FSinh_(_Left, _Right));
+ 		}
+ 
+ 	static _Ty atan2(_Ty _Yval, _Ty _Xval)
+diff -Nur include/cpp/embedded/complex qnx-include/cpp/embedded/complex
+--- include/cpp/embedded/complex	2021-06-01 11:49:12.499400245 -0400
++++ qnx-include/cpp/embedded/complex	2021-06-01 11:49:13.871384131 -0400
+@@ -48,12 +48,12 @@
+ 
+ 	static _Ty _Cosh(_Ty _Left, _Ty _Right)
+ 		{	// return cosh(_Left) * _Right
+-		return (_CSTD _Cosh(_Left, _Right));
++		return (_CSTD _Cosh_(_Left, _Right));
+ 		}
+ 
+ 	static short _Exp(_Ty *_Pleft, _Ty _Right, short _Exponent)
+ 		{	// compute exp(*_Pleft) * _Right * 2 ^ _Exponent
+-		return (_CSTD _Exp(_Pleft, _Right, _Exponent));
++		return (_CSTD _Exp_(_Pleft, _Right, _Exponent));
+ 		}
+ 
+ 	static _Ty _Infv(_Ty)
+@@ -63,12 +63,12 @@
+ 
+ 	static bool _Isinf(_Ty _Left)
+ 		{	// test for infinity
+-		return (_CSTD _Dtest(&_Left) == _INFCODE);
++		return (_CSTD _Dtest_(&_Left) == _INFCODE);
+ 		}
+ 
+ 	static bool _Isnan(_Ty _Left)
+ 		{	// test for NaN
+-		return (_CSTD _Dtest(&_Left) == _NANCODE);
++		return (_CSTD _Dtest_(&_Left) == _NANCODE);
+ 		}
+ 
+ 	static _Ty _Nanv(_Ty)
+@@ -78,7 +78,7 @@
+ 
+ 	static _Ty _Sinh(_Ty _Left, _Ty _Right)
+ 		{	// return sinh(_Left) * _Right
+-		return (_CSTD _Sinh(_Left, _Right));
++		return (_CSTD _Sinh_(_Left, _Right));
+ 		}
+ 
+ 	static _Ty atan2(_Ty _Yval, _Ty _Xval)
+@@ -135,12 +135,12 @@
+ 
+ 	static _Ty _Cosh(_Ty _Left, _Ty _Right)
+ 		{	// return cosh(_Left) * _Right
+-		return (_CSTD _FCosh(_Left, _Right));
++		return (_CSTD _FCosh_(_Left, _Right));
+ 		}
+ 
+ 	static short _Exp(_Ty *_Pleft, _Ty _Right, short _Exponent)
+ 		{	// compute exp(*_Pleft) * _Right * 2 ^ _Exponent
+-		return (_CSTD _FExp(_Pleft, _Right, _Exponent));
++		return (_CSTD _FExp_(_Pleft, _Right, _Exponent));
+ 		}
+ 
+ 	static _Ty _Infv(_Ty)
+@@ -150,12 +150,12 @@
+ 
+ 	static bool _Isinf(_Ty _Left)
+ 		{	// test for infinity
+-		return (_CSTD _FDtest(&_Left) == _INFCODE);
++		return (_CSTD _FDtest_(&_Left) == _INFCODE);
+ 		}
+ 
+ 	static bool _Isnan(_Ty _Left)
+ 		{	// test for NaN
+-		return (_CSTD _FDtest(&_Left) == _NANCODE);
++		return (_CSTD _FDtest_(&_Left) == _NANCODE);
+ 		}
+ 
+ 	static _Ty _Nanv(_Ty)
+@@ -165,7 +165,7 @@
+ 
+ 	static _Ty _Sinh(_Ty _Left, _Ty _Right)
+ 		{	// return sinh(_Left) * _Right
+-		return (_CSTD _FSinh(_Left, _Right));
++		return (_CSTD _FSinh_(_Left, _Right));
+ 		}
+ 
+ 	static _Ty atan2(_Ty _Yval, _Ty _Xval)
+diff -Nur include/cpp/limits qnx-include/cpp/limits
+--- include/cpp/limits	2021-06-01 11:49:12.507400151 -0400
++++ qnx-include/cpp/limits	2021-06-01 11:49:13.871384131 -0400
+@@ -738,7 +738,7 @@
+ 
+ 	static _Ty (min)() _THROW0()
+ 		{	// return minimum value
+-		return (-_LLONG_MAX - _C2);
++		return (-_LLONG_MAX - _INT_C2);
+ 		}
+ 
+ 	static _Ty (max)() _THROW0()
+diff -Nur include/ctype.h qnx-include/ctype.h
+--- include/ctype.h	2021-06-01 11:49:13.467388876 -0400
++++ qnx-include/ctype.h	2021-06-01 11:49:13.887383943 -0400
+@@ -24,13 +24,14 @@
+ #ifndef _CTYPE_H_INCLUDED
+ 
+ #ifndef _YVALS
+- #include <yvals.h>
++#include <yvals.h>
+ #endif /* _YVALS */
+ 
+ #ifndef __PLATFORM_H_INCLUDED
+ #include <sys/platform.h>
+ #endif
+ 
++// C++ doesn't like this header...??
+ #if !defined(__cplusplus) || defined(_STD_USING) || defined(_GLOBAL_USING)
+ #define _CTYPE_H_INCLUDED
+ #endif
+@@ -40,18 +41,18 @@
+ 
+ _C_STD_BEGIN
+ 
+-		/* _Ctype code bits */
+-#define _XB		0x400 /* extra blank */
+-#define _XA		0x200 /* extra alphabetic */
+-#define _XS		0x100 /* extra space */
+-#define _BB		0x80 /* BEL, BS, etc. */
+-#define _CN		0x40 /* CR, FF, HT, NL, VT */
+-#define _DI		0x20 /* '0'-'9' */
+-#define _LO		0x10 /* 'a'-'z' */
+-#define _PU		0x08 /* punctuation */
+-#define _SP		0x04 /* space */
+-#define _UP		0x02 /* 'A'-'Z' */
+-#define _XD		0x01 /* '0'-'9', 'A'-'F', 'a'-'f' */
++/* _Ctype code bits: suffixed to remove libstdc++ conflict */
++#define _XB_		0x400 /* extra blank */
++#define _XA_		0x200 /* extra alphabetic */
++#define _XS_		0x100 /* extra space */
++#define _BB_		0x80 /* BEL, BS, etc. */
++#define _CN_		0x40 /* CR, FF, HT, NL, VT */
++#define _DI_		0x20 /* '0'-'9' */
++#define _LO_		0x10 /* 'a'-'z' */
++#define _PU_		0x08 /* punctuation */
++#define _SP_		0x04 /* space */
++#define _UP_		0x02 /* 'A'-'Z' */
++#define _XD_		0x01 /* '0'-'9', 'A'-'F', 'a'-'f' */
+ 
+ _C_LIB_DECL
+ typedef const short *_Ctype_t;
+@@ -64,127 +65,13 @@
+ extern _Ctype_t _Tolotab;
+ extern _Ctype_t _Touptab;
+ 
+-  #define _Getpctype()		_CSTD _Ctype
+-  #define _Getptolower()	_CSTD _Tolotab
+-  #define _Getptoupper()	_CSTD _Touptab
++#define _Getpctype()		_CSTD _Ctype
++#define _Getptolower()	_CSTD _Tolotab
++#define _Getptoupper()	_CSTD _Touptab
+ 
+ #define _Getchrtype(x)	_Getpctype()[(int)(x)]
+ #define _CTolower(x)	_Getptolower()[(int)(x)]
+ #define _CToupper(x)	_Getptoupper()[(int)(x)]
+-_END_C_LIB_DECL
+-
+- #if defined(__cplusplus) && !defined(_NO_CPP_INLINES)
+-		// INLINES, for C++
+-_C_LIB_DECL
+-inline int isalnum(int _Ch)
+-	{	// check alnum bits
+-	return (_Getchrtype(_Ch) & (_DI|_LO|_UP|_XA));
+-	}
+-
+-inline int isalpha(int _Ch)
+-	{	// check alpha bits
+-	return (_Getchrtype(_Ch) & (_LO|_UP|_XA));
+-	}
+-
+-inline int iscntrl(int _Ch)
+-	{	// check cntrl bits
+-	return (_Getchrtype(_Ch) & _BB);
+-	}
+-
+-inline int isdigit(int _Ch)
+-	{	// check digit bits
+-	return (_Getchrtype(_Ch) & _DI);
+-	}
+-
+-inline int isgraph(int _Ch)
+-	{	// check graph bits
+-	return (_Getchrtype(_Ch) & (_DI|_LO|_PU|_UP|_XA));
+-	}
+-
+-inline int islower(int _Ch)
+-	{	// check alnum bits
+-	return (_Getchrtype(_Ch) & _LO);
+-	}
+-
+-inline int isprint(int _Ch)
+-	{	// check print bits
+-	return (_Getchrtype(_Ch) & (_DI|_LO|_PU|_SP|_UP|_XA));
+-	}
+-
+-inline int ispunct(int _Ch)
+-	{	// check punct bits
+-	return (_Getchrtype(_Ch) & _PU);
+-	}
+-
+-inline int _Isspace(int _Ch)
+-	{	// check space bits
+-	return (_Getchrtype(_Ch) & (_CN|_SP|_XS));
+-	}
+-
+-inline int isspace(int _Ch)
+-	{	// check space bits
+-	return (_Isspace(_Ch));
+-	}
+-
+-inline int isupper(int _Ch)
+-	{	// check upper bits
+-	return (_Getchrtype(_Ch) & _UP);
+-	}
+-
+-inline int isxdigit(int _Ch)
+-	{	// check xdigit bits
+-	return (_Getchrtype(_Ch) & _XD);
+-	}
+-
+- #if _HAS_C9X
+-inline int isblank(int _Ch)
+-	{	// check blank bits
+-	return (_Getchrtype(_Ch) & (_SP|_XB));
+-	}
+- #endif /* _IS_C9X */
+-
+-inline int tolower(int _Ch)
+-	{	// convert to lower case
+-	return (_CTolower(_Ch));
+-	}
+-
+-inline int toupper(int _Ch)
+-	{	// convert to upper case
+-	return (_CToupper(_Ch));
+-	}
+-_END_C_LIB_DECL
+-
+-#ifdef __EXT_XOPEN_EX
+-
+-inline int _tolower(int _Ch) {	/* convert to lower case */
+-	return (_CSTD _Tolotab[_Ch]); }
+-
+-inline int _toupper(int _Ch) {	/* convert to upper case */
+-	return (_CSTD _Touptab[_Ch]); }
+-
+-inline int isascii(int _Ch) {	/* check ascii */
+-	return ((unsigned)(_Ch) <= 0x7f); }
+-
+-inline int toascii(int _Ch) {	/* convert to ascii */
+-	return ((_Ch) & 0x7f); }
+-
+-#endif
+-
+-inline int __isascii(int _Ch) {	/* check ascii */
+-	return ((unsigned)(_Ch) <= 0x7f); }
+-
+-inline int __toascii(int _Ch) {	/* convert to ascii */
+-	return ((int)(_Ch) & 0x7f); }
+-
+-inline int __iscsymf(int _Ch) {	/* check first C symbol */
+-	return (_CSTD isalpha(_Ch)||(_Ch)=='_'); }
+-
+-inline int __iscsym(int _Ch) {	/* check next C symbol */
+-	return (_CSTD isalnum(_Ch)||(_Ch)=='_'); }
+-
+- #else /* defined(__cplusplus) && !defined(_NO_CPP_INLINES) */
+-		/* declarations and macro overrides, for C */
+-_C_LIB_DECL
+ 
+ int isalnum(int);
+ int isalpha(int);
+@@ -199,9 +86,9 @@
+ int isxdigit(int);
+ int tolower(int);
+ int toupper(int);
+- #if _HAS_C9X
++#if _HAS_C9X
+ int isblank(int);
+- #endif /* _IS_C9X */
++#endif /* _IS_C9X */
+ 
+ #ifdef __EXT_XOPEN_EX
+ extern int _tolower(int), _toupper(int);
+@@ -209,26 +96,123 @@
+ #endif
+ extern int __isascii(int), __toascii(int);
+ extern int __iscsymf(int), __iscsym(int);
++_END_C_LIB_DECL
+ 
++#if defined(__cplusplus) && !defined(_NO_CPP_INLINES)
++// INLINES, for C++
++_C_LIB_DECL
++inline int isalnum(int _Ch) {	// check alnum bits
++return (_Getchrtype(_Ch) & (_DI_|_LO_|_UP_|_XA_));
++}
++
++inline int isalpha(int _Ch) {	// check alpha bits
++return (_Getchrtype(_Ch) & (_LO_|_UP_|_XA_));
++}
++
++inline int iscntrl(int _Ch) {	// check cntrl bits
++return (_Getchrtype(_Ch) & _BB_);
++}
++
++inline int isdigit(int _Ch) {	// check digit bits
++return (_Getchrtype(_Ch) & _DI_);
++}
++
++inline int isgraph(int _Ch) {	// check graph bits
++return (_Getchrtype(_Ch) & (_DI_|_LO_|_PU_|_UP_|_XA_));
++}
++
++inline int islower(int _Ch) {	// check alnum bits
++return (_Getchrtype(_Ch) & _LO_);
++}
++
++inline int isprint(int _Ch) {	// check print bits
++return (_Getchrtype(_Ch) & (_DI_|_LO_|_PU_|_SP_|_UP_|_XA_));
++}
++
++inline int ispunct(int _Ch) {	// check punct bits
++return (_Getchrtype(_Ch) & _PU_);
++}
++
++inline int _Isspace(int _Ch) {	// check space bits
++return (_Getchrtype(_Ch) & (_CN_|_SP_|_XS_));
++}
++
++inline int isspace(int _Ch) {	// check space bits
++return (_Isspace(_Ch));
++}
++
++inline int isupper(int _Ch) {	// check upper bits
++return (_Getchrtype(_Ch) & _UP_);
++}
++
++inline int isxdigit(int _Ch) {	// check xdigit bits
++return (_Getchrtype(_Ch) & _XD_);
++}
++
++#if _HAS_C9X
++inline int isblank(int _Ch)
++{	// check blank bits
++  return (_Getchrtype(_Ch) & (_SP_|_XB_));
++}
++#endif /* _IS_C9X */
++
++inline int tolower(int _Ch) {	// convert to lower case
++return (_CTolower(_Ch));
++}
++
++inline int toupper(int _Ch) {	// convert to upper case
++return (_CToupper(_Ch));
++}
+ _END_C_LIB_DECL
+ 
+-  #define isalnum(c)	(_Getchrtype(c) & (_DI|_LO|_UP|_XA))
+-  #define isalpha(c)	(_Getchrtype(c) & (_LO|_UP|_XA))
+-  #define iscntrl(c)	(_Getchrtype(c) & _BB)
+-  #define isdigit(c)	(_Getchrtype(c) & _DI)
+-  #define isgraph(c)	(_Getchrtype(c) & (_DI|_LO|_PU|_UP|_XA))
+-  #define islower(c)	(_Getchrtype(c) & _LO)
+-  #define isprint(c)	(_Getchrtype(c) & (_DI|_LO|_PU|_SP|_UP|_XA))
+-  #define ispunct(c)	(_Getchrtype(c) & _PU)
+-  #define isspace(c)	(_Getchrtype(c) & (_CN|_SP|_XS))
+-  #define isupper(c)	(_Getchrtype(c) & _UP)
+-  #define isxdigit(c)	(_Getchrtype(c) & _XD)
+- #if _HAS_C9X
+-  #define isblank(c)	(_Getchrtype(c) & (_SP|_XB))
+- #endif /* _IS_C9X */
++#ifdef __EXT_XOPEN_EX
++
++inline int _tolower(int _Ch) { /* convert to lower case */
++return (_CSTD _Tolotab[_Ch]);}
++
++inline int _toupper(int _Ch) { /* convert to upper case */
++return (_CSTD _Touptab[_Ch]);}
+ 
+-   #define tolower(c)	_CTolower(c)
+-   #define toupper(c)	_CToupper(c)
++inline int isascii(int _Ch) { /* check ascii */
++return ((unsigned)(_Ch) <= 0x7f);}
++
++inline int toascii(int _Ch) { /* convert to ascii */
++return ((_Ch) & 0x7f);}
++
++#endif
++
++inline int __isascii(int _Ch) { /* check ascii */
++return ((unsigned) (_Ch) <= 0x7f);
++}
++
++inline int __toascii(int _Ch) { /* convert to ascii */
++return ((int) (_Ch) & 0x7f);
++}
++
++inline int __iscsymf(int _Ch) { /* check first C symbol */
++return (_CSTD isalpha(_Ch)||(_Ch)=='_');}
++
++inline int __iscsym(int _Ch) { /* check next C symbol */
++return (_CSTD isalnum(_Ch)||(_Ch)=='_');}
++
++
++#define isalnum(c)	(_Getchrtype(c) & (_DI_|_LO_|_UP_|_XA_))
++#define isalpha(c)	(_Getchrtype(c) & (_LO_|_UP_|_XA_))
++#define iscntrl(c)	(_Getchrtype(c) & _BB_)
++#define isdigit(c)	(_Getchrtype(c) & _DI_)
++#define isgraph(c)	(_Getchrtype(c) & (_DI_|_LO_|_PU_|_UP_|_XA_))
++#define islower(c)	(_Getchrtype(c) & _LO_)
++#define isprint(c)	(_Getchrtype(c) & (_DI_|_LO_|_PU_|_SP_|_UP_|_XA_))
++#define ispunct(c)	(_Getchrtype(c) & _PU_)
++#define isspace(c)	(_Getchrtype(c) & (_CN_|_SP_|_XS_))
++#define isupper(c)	(_Getchrtype(c) & _UP_)
++#define isxdigit(c)	(_Getchrtype(c) & _XD_)
++#if _HAS_C9X
++#define isblank(c)	(_Getchrtype(c) & (_SP_|_XB_))
++#endif /* _IS_C9X */
++
++#define tolower(c)	_CTolower(c)
++#define toupper(c)	_CToupper(c)
+ 
+ #ifdef __EXT_XOPEN_EX
+ #define _tolower(__c)	_CTolower(__c)
+@@ -241,7 +225,7 @@
+ #define __isascii(__c)	((unsigned)(__c) <= 0x7f)
+ #define __toascii(__c)	((__c) & 0x7f)
+ 
+- #endif /* defined(__cplusplus) && !defined(_NO_CPP_INLINES) */
++#endif /* defined(__cplusplus) && !defined(_NO_CPP_INLINES) */
+ 
+ _C_STD_END
+ #endif /* _CTYPE */
+@@ -256,18 +240,18 @@
+ using _CSTD toascii; using _CSTD isascii;
+ #endif
+ 
+- #if _HAS_C9X
++#if _HAS_C9X
+ using _CSTD isblank;
+- #endif /* _IS_C9X */
++#endif /* _IS_C9X */
+ 
+ #endif /* _STD_USING */
+ 
+-#endif
++#endif // _CTYPE_H_INCLUDED
+ 
+ /*
+  * Copyright (c) 1992-2006 by P.J. Plauger.  ALL RIGHTS RESERVED.
+  * Consult your license regarding permissions and restrictions.
+-V5.00:1296 */
++ * V5.00:1296 */
+ 
+ #if defined(__QNXNTO__) && defined(__USESRCVERSION)
+ #include <sys/srcversion.h>
+diff -Nur include/libstdc++/4.6.3/arm-unknown-nto-qnx8.0.0eabi/bits/ctype_base.h qnx-include/libstdc++/4.6.3/arm-unknown-nto-qnx8.0.0eabi/bits/ctype_base.h
+--- include/libstdc++/4.6.3/arm-unknown-nto-qnx8.0.0eabi/bits/ctype_base.h	2021-06-01 11:49:12.891395642 -0400
++++ qnx-include/libstdc++/4.6.3/arm-unknown-nto-qnx8.0.0eabi/bits/ctype_base.h	2021-06-01 11:49:13.887383943 -0400
+@@ -46,17 +46,17 @@
+     // NB: Offsets into ctype<char>::_M_table force a particular size
+     // on the mask type. Because of this, we don't use an enum.
+     typedef short		mask;
+-    static const mask upper    	= _UP;
+-    static const mask lower 	= _LO;
+-    static const mask alpha 	= _LO | _UP | _XA;
+-    static const mask digit 	= _DI;
+-    static const mask xdigit 	= _XD;
+-    static const mask space 	= _CN | _SP | _XS;
+-    static const mask print 	= _DI | _LO | _PU | _SP | _UP | _XA;
+-    static const mask graph 	= _DI | _LO | _PU | _UP | _XA;
+-    static const mask cntrl 	= _BB;
+-    static const mask punct 	= _PU;
+-    static const mask alnum 	= _DI | _LO | _UP | _XA;
++    static const mask upper    	= _UP_;
++    static const mask lower 	= _LO_;
++    static const mask alpha 	= _LO_ | _UP_ | _XA_;
++    static const mask digit 	= _DI_;
++    static const mask xdigit 	= _XD_;
++    static const mask space 	= _CN_ | _SP_ | _XS_;
++    static const mask print 	= _DI_ | _LO_ | _PU_ | _SP_ | _UP_ | _XA_;
++    static const mask graph 	= _DI_ | _LO_ | _PU_ | _UP_ | _XA_;
++    static const mask cntrl 	= _BB_;
++    static const mask punct 	= _PU_;
++    static const mask alnum 	= _DI_ | _LO_ | _UP_ | _XA_;
+   };
+ 
+ _GLIBCXX_END_NAMESPACE_VERSION
+diff -Nur include/math.h qnx-include/math.h
+--- include/math.h	2021-06-01 11:49:12.487400386 -0400
++++ qnx-include/math.h	2021-06-01 11:49:13.963383051 -0400
+@@ -162,33 +162,46 @@
+ 	return (_FPCOMP((_Tw)_Left, (_Tw)_Right));
+ 	}
+ 
+-		// FUNCTION fpclassify
++// FUNCTION fpclassify
++// ambiguates when '0' is passed to overloads
++// also POSIX defines these as macros.
++
++template<typename _FloatType>
++inline int fpclassify(_FloatType _Left) {
++	return (QNX_Dtest(&_Left));
++}
++template<>
+ inline int fpclassify(float _Left)
+ 	{	// classify argument
+-	return (_FDtest(&_Left));
++	return (QNX_FDtest(&_Left));
+ 	}
+-
++template<>
+ inline int fpclassify(double _Left)
+ 	{	// classify argument
+-	return (_Dtest(&_Left));
++	return (QNX_Dtest(&_Left));
+ 	}
+-
++template<>
+ inline int fpclassify(long double _Left)
+ 	{	// classify argument
+-	return (_LDtest(&_Left));
++	return (QNX_LDtest(&_Left));
+ 	}
+ 
+ 		// FUNCTION signbit
++template<typename _FloatType>
++inline bool signbit(_FloatType left) {
++	return (_Dsign(left) != 0); // default impl is double
++}
++template<>
+ inline bool signbit(float _Left)
+ 	{	// test sign bit
+ 	return (_FDsign(_Left) != 0);
+ 	}
+-
++template<>
+ inline bool signbit(double _Left)
+ 	{	// test sign bit
+ 	return (_Dsign(_Left) != 0);
+ 	}
+-
++template<>
+ inline bool signbit(long double _Left)
+ 	{	// test sign bit
+ 	return (_LDsign(_Left) != 0);
+@@ -364,6 +377,13 @@
+ double tan(double);
+ double tanh(double);
+ 
++double cos(double);
++double cosh(double);
++double log(double);
++double log10(double);
++double sin(double);
++double sinh(double);
++
+  #if _HAS_C9X
+ double acosh(double);
+ double asinh(double);
+@@ -461,6 +481,13 @@
+ float tanf(float);
+ float tanhf(float);
+ 
++float cosf(float);
++float coshf(float);
++float logf(float);
++float log10f(float);
++float sinf(float);
++float sinhf(float);
++
+  #if _HAS_C9X
+ float acoshf(float);
+ float asinhf(float);
+@@ -496,6 +523,9 @@
+ float scalblnf(float, long);
+ float tgammaf(float);
+ float truncf(float);
++
++float log2f(float);
++
+  #endif /* _IS_C9X */
+ 
+ 
+@@ -517,6 +547,13 @@
+ long double tanl(long double);
+ long double tanhl(long double);
+ 
++long double cosl(long double);
++long double coshl(long double);
++long double logl(long double);
++long double log10l(long double);
++long double sinl(long double);
++long double sinhl(long double);
++
+  #if _HAS_C9X
+ long double acoshl(long double);
+ long double asinhl(long double);
+@@ -552,6 +589,9 @@
+ long double scalblnl(long double, long);
+ long double tgammal(long double);
+ long double truncl(long double);
++
++long double log2l(long double);
++
+  #endif /* _IS_C9X */
+ 
+ _END_C_LIB_DECL
+@@ -584,38 +624,38 @@
+ _C_LIB_DECL
+ inline double cos(double _Left)
+ 	{	// return cosine
+-	return (_Sin(_Left, 1));
++	return (QNX_Sin(_Left, 1));
+ 	}
+ 
+ inline double cosh(double _Left)
+ 	{	// return hyperbolic cosine
+-	return (_Cosh(_Left, 1));
++	return (QNX_Cosh(_Left, 1));
+ 	}
+ 
+ inline double log(double _Left)
+ 	{	// return natural logarithm
+-	return (_Log(_Left, 0));
++	return (QNX_Log(_Left, 0));
+ 	}
+ 
+ inline double log10(double _Left)
+ 	{	// return base-10 logarithm
+-	return (_Log(_Left, 1));
++	return (QNX_Log(_Left, 1));
+ 	}
+ 
+ inline double sin(double _Left)
+ 	{	// return sine
+-	return (_Sin(_Left, 0));
++	return (QNX_Sin(_Left, 0));
+ 	}
+ 
+ inline double sinh(double _Left)
+ 	{	// return hyperbolic sine
+-	return (_Sinh(_Left, 1));
++	return (QNX_Sinh(_Left, 1));
+ 	}
+ 
+  #if _HAS_C9X
+ inline double log2(double _Left)
+ 	{	// return base-2 logarithm
+-	return (_Log(_Left, -1));
++	return (QNX_Log(_Left, -1));
+ 	}
+  #endif /* _IS_C9X */
+ 
+@@ -652,38 +692,38 @@
+ _C_LIB_DECL
+ inline float cosf(float _Left)
+ 	{	// return cosine
+-	return (_FSin(_Left, 1));
++	return (QNX_FSin(_Left, 1));
+ 	}
+ 
+ inline float coshf(float _Left)
+ 	{	// return hyperbolic cosine
+-	return (_FCosh(_Left, 1));
++	return (QNX_Cosh(_Left, 1));
+ 	}
+ 
+ inline float logf(float _Left)
+ 	{	// return natural logarithm
+-	return (_FLog(_Left, 0));
++	return (QNX_FLog(_Left, 0));
+ 	}
+ 
+ inline float log10f(float _Left)
+ 	{	// return base-10 logarithm
+-	return (_FLog(_Left, 1));
++	return (QNX_FLog(_Left, 1));
+ 	}
+ 
+ inline float sinf(float _Left)
+ 	{	// return sine
+-	return (_FSin(_Left, 0));
++	return (QNX_FSin(_Left, 0));
+ 	}
+ 
+ inline float sinhf(float _Left)
+ 	{	// return hyperbolic sine
+-	return (_FSinh(_Left, 1));
++	return (QNX_FSinh(_Left, 1));
+ 	}
+ 
+  #if _HAS_C9X
+ inline float log2f(float _Left)
+ 	{	// return base-2 logarithm
+-	return (_FLog(_Left, -1));
++	return (QNX_FLog(_Left, -1));
+ 	}
+  #endif /* _IS_C9X */
+ 
+@@ -721,12 +761,12 @@
+ 
+ inline float cos(float _Left)
+ 	{	// return cosine
+-	return (_FSin(_Left, 1));
++	return (QNX_FSin(_Left, 1));
+ 	}
+ 
+ inline float cosh(float _Left)
+ 	{	// return hyperbolic cosine
+-	return (_FCosh(_Left, 1));
++	return (QNX_Cosh(_Left, 1));
+ 	}
+ 
+ inline float exp(float _Left)
+@@ -761,12 +801,12 @@
+ 
+ inline float log(float _Left)
+ 	{	// return natural logarithm
+-	return (_FLog(_Left, 0));
++	return (QNX_FLog(_Left, 0));
+ 	}
+ 
+ inline float log10(float _Left)
+ 	{	// return base-10 logarithm
+-	return (_FLog(_Left, 1));
++	return (QNX_FLog(_Left, 1));
+ 	}
+ 
+ inline float modf(float _Left, float *_Right)
+@@ -803,12 +843,12 @@
+ 
+ inline float sin(float _Left)
+ 	{	// return sine
+-	return (_FSin(_Left, 0));
++	return (QNX_FSin(_Left, 0));
+ 	}
+ 
+ inline float sinh(float _Left)
+ 	{	// return hyperbolic sine
+-	return (_FSinh(_Left, 1));
++	return (QNX_FSinh(_Left, 1));
+ 	}
+ 
+ inline float sqrt(float _Left)
+@@ -923,7 +963,7 @@
+ 
+ inline float log2(float _Left)
+ 	{	// return log2
+-	return (_FLog(_Left, -1));
++	return (QNX_FLog(_Left, -1));
+ 	}
+ 
+ inline float logb(float _Left)
+@@ -1002,40 +1042,40 @@
+ _C_LIB_DECL
+ inline long double cosl(long double _Left)
+ 	{	// return cosine
+-	return (_LSin(_Left, 1));
++	return (QNX_LSin(_Left, 1));
+ 	}
+ 
+ inline long double coshl(long double _Left)
+ 	{	// return hyperbolic cosine
+-	return (_LCosh(_Left, 1));
++	return (QNX_LCosh(_Left, 1));
+ 	}
+ 
+ inline long double logl(long double _Left)
+ 	{	// return natural logarithm
+-	return (_LLog(_Left, 0));
++	return (QNX_LLog(_Left, 0));
+ 	}
+ 
+ inline long double log10l(long double _Left)
+ 	{	// return base-10 logarithm
+-	return (_LLog(_Left, 1));
++	return (QNX_LLog(_Left, 1));
+ 	}
+ 
+ inline long double sinl(long double _Left)
+ 	{	// return sine
+-	return (_LSin(_Left, 0));
++	return (QNX_LSin(_Left, 0));
+ 	}
+ 
+ inline long double sinhl(long double _Left)
+ 	{	// return hyperbolic sine
+-	return (_LSinh(_Left, 1));
++	return (QNX_LSinh(_Left, 1));
+ 	}
+ 
+  #if _HAS_C9X
+ inline long double log2l(long double _Left)
+ 	{	// return base-2 logarithm
+-	return (_LLog(_Left, -1));
++	return (QNX_LLog(_Left, -1));
+ 	}
+- #endif /* _IS_C9X */
++ #endif // _IS_C9X
+ 
+ _END_C_LIB_DECL
+ 
+@@ -1071,12 +1111,12 @@
+ 
+ inline long double cos(long double _Left)
+ 	{	// return cosine
+-	return (_LSin(_Left, 1));
++	return (QNX_LSin(_Left, 1));
+ 	}
+ 
+ inline long double cosh(long double _Left)
+ 	{	// return hyperbolic cosine
+-	return (_LCosh(_Left, 1));
++	return (QNX_LCosh(_Left, 1));
+ 	}
+ 
+ inline long double exp(long double _Left)
+@@ -1111,12 +1151,12 @@
+ 
+ inline long double log(long double _Left)
+ 	{	// return natural logarithm
+-	return (_LLog(_Left, 0));
++	return (QNX_LLog(_Left, 0));
+ 	}
+ 
+ inline long double log10(long double _Left)
+ 	{	// return base-10 logarithm
+-	return (_LLog(_Left, 1));
++	return (QNX_LLog(_Left, 1));
+ 	}
+ 
+ inline long double modf(long double _Left, long double *_Right)
+@@ -1144,21 +1184,21 @@
+ 		}
+ 	}
+ 
+- #else /* _IS_EMBEDDED */
++ #else // _IS_EMBEDDED
+ inline long double pow(long double _Left, int _Right)
+ 	{	// raise to integer power
+ 	return (_Pow_int(_Left, _Right));
+ 	}
+- #endif /* _IS_EMBEDDED */
++ #endif // _IS_EMBEDDED
+ 
+ inline long double sin(long double _Left)
+ 	{	// return sine
+-	return (_LSin(_Left, 0));
++	return (QNX_LSin(_Left, 0));
+ 	}
+ 
+ inline long double sinh(long double _Left)
+ 	{	// return hyperbolic sine
+-	return (_LSinh(_Left, 1));
++	return (QNX_LSinh(_Left, 1));
+ 	}
+ 
+ inline long double sqrt(long double _Left)
+@@ -1275,7 +1315,7 @@
+ 
+ inline long double log2(long double _Left)
+ 	{	// return log2
+-	return (_LLog(_Left, -1));
++	return (QNX_LLog(_Left, -1));
+ 	}
+ 
+ inline long double logb(long double _Left)
+@@ -1348,179 +1388,155 @@
+ 	{	// return trunc
+ 	return (truncl(_Left));
+ 	}
+- #endif /* _IS_C9X */
+-
++ #endif // _IS_C9X
+ 
+  #else /* defined(__cplusplus) && !defined(_NO_CPP_INLINES) */
++#if !defined(__cplusplus)
+ _C_LIB_DECL
+ 		/* double MACRO OVERRIDES, FOR C */
+-double cos(double);
+-double cosh(double);
+-double log(double);
+-double log10(double);
+-double sin(double);
+-double sinh(double);
+ 
+ #ifdef __QNX__
+  #ifdef _FAST_COS
+  #define cos(x)	_FAST_COS(x)
+  #else
+- #define cos(x)	_CSTD _Sin(x, 1)
++ #define cos(x)	_CSTD QNX_Sin(x, 1)
+  #endif
+  #ifdef _FAST_COSH
+  #define cosh(x)	_FAST_COSH(x)
+- #else 
+- #define cosh(x)	_CSTD _Cosh(x, 1)
++ #else
++ #define cosh(x)	_CSTD QNX_Cosh(x, 1)
+  #endif
+  #ifdef _FAST_LOG
+  #define log(x)	_FAST_LOG(x)
+  #else
+- #define log(x)	_CSTD _Log(x, 0)
++ #define log(x)	_CSTD QNX_Log(x, 0)
+  #endif
+  #ifdef _FAST_LOG10
+  #define log10(x)	_FAST_LOG10(x)
+  #else
+- #define log10(x)	_CSTD _Log(x, 1)
++ #define log10(x)	_CSTD QNX_Log(x, 1)
+  #endif
+  #ifdef _FAST_SIN
+  #define sin(x)	_FAST_SIN(x)
+  #else
+- #define sin(x)	_CSTD _Sin(x,0)
++ #define sin(x)	_CSTD QNX_Sin(x,0)
+  #endif
+  #ifdef _FAST_SINH
+  #define sinh(x)	_FAST_SINH(x)
+  #else
+- #define sinh(x)	_CSTD _Sinh(x, 1)
++ #define sinh(x)	_CSTD QNX_Sinh(x, 1)
+  #endif
+ #else
+- #define cos(x)		_Sin(x, 1)
+- #define cosh(x)	_Cosh(x, 1)
+- #define log(x)		_Log(x, 0)
+- #define log10(x)	_Log(x, 1)
+- #define sin(x)		_Sin(x, 0)
+- #define sinh(x)	_Sinh(x, 1)
++ #define cos(x)		QNX_Sin(x, 1)
++ #define cosh(x)	QNX_Cosh(x, 1)
++ #define log(x)		QNX_Log(x, 0)
++ #define log10(x)	QNX_Log(x, 1)
++ #define sin(x)		QNX_Sin(x, 0)
++ #define sinh(x)	QNX_Sinh(x, 1)
+ #endif /* __QNX__ */
+ 
+  #if _HAS_C9X
+ double log2(double);
+ 
+- #define log2(x)	_CSTD _Log(x, -1)
++ #define log2(x)	_CSTD QNX_Log(x, -1)
+  #endif /* _IS_C9X */
+ 
+ 		/* float MACRO OVERRIDES, FOR C */
+-float cosf(float);
+-float coshf(float);
+-float logf(float);
+-float log10f(float);
+-float sinf(float);
+-float sinhf(float);
+-
+ #ifdef __QNX__
+  #ifdef _FAST_COSF
+  #define cosf(x)	_FAST_COSF(x)
+  #else
+- #define cosf(x)	_CSTD _FSin(x, 1)
++ #define cosf(x)	_CSTD QNX_FSin(x, 1)
+  #endif
+  #ifdef _FAST_COSHF
+  #define coshf(x)	_FAST_COSHF(x)
+  #else
+- #define coshf(x)	_CSTD _FCosh(x, 1)
++ #define coshf(x)	_CSTD QNX_Cosh(x, 1)
+  #endif
+  #ifdef _FAST_LOGF
+  #define logf(x)	_FAST_LOGF(x)
+  #else
+- #define logf(x)	_CSTD _FLog(x, 0)
++ #define logf(x)	_CSTD QNX_FLog(x, 0)
+  #endif
+  #ifdef _FAST_LOG10F
+  #define log10f(x)	_FAST_LOG10F(x)
+  #else
+- #define log10f(x)	_CSTD _FLog(x, 1)
++ #define log10f(x)	_CSTD QNX_FLog(x, 1)
+  #endif
+  #ifdef _FAST_SINF
+  #define sinf(x)	_FAST_SINF(x)
+  #else
+- #define sinf(x)	_CSTD _FSin(x, 0)
++ #define sinf(x)	_CSTD QNX_FSin(x, 0)
+  #endif
+  #ifdef _FAST_SINHF
+  #define sinhf(x)	_FAST_SINHF(x)
+  #else
+- #define sinhf(x)	_CSTD _FSinh(x, 1)
++ #define sinhf(x)	_CSTD QNX_FSinh(x, 1)
+  #endif
+ #else
+- #define cosf(x)	_FSin(x, 1)
+- #define coshf(x)	_FCosh(x, 1)
+- #define logf(x)	_FLog(x, 0)
+- #define log10f(x)	_FLog(x, 1)
+- #define sinf(x)	_FSin(x, 0)
+- #define sinhf(x)	_FSinh(x, 1)
++ #define cosf(x)	QNX_FSin(x, 1)
++ #define coshf(x)	QNX_Cosh(x, 1)
++ #define logf(x)	QNX_FLog(x, 0)
++ #define log10f(x)	QNX_FLog(x, 1)
++ #define sinf(x)	QNX_FSin(x, 0)
++ #define sinhf(x)	QNX_FSinh(x, 1)
+ #endif /* __QNX__ */
+ 
+  #if _HAS_C9X
+-float log2f(float);
+-
+- #define log2f(x)	_CSTD _FLog(x, -1)
++ #define log2f(x)	_CSTD QNX_FLog(x, -1)
+  #endif /* _IS_C9X */
+ 
+ 		/* long double MACRO OVERRIDES, FOR C */
+-long double cosl(long double);
+-long double coshl(long double);
+-long double logl(long double);
+-long double log10l(long double);
+-long double sinl(long double);
+-long double sinhl(long double);
+-
+ #ifdef __QNX__
+  #ifdef _FAST_COSL
+  #define cosl(x)	_FAST_COSL(x)
+  #else
+- #define cosl(x)	_CSTD _LSin(x, 1)
++ #define cosl(x)	_CSTD QNX_LSin(x, 1)
+  #endif
+  #ifdef _FAST_COSHL
+  #define coshl(x)	_FAST_COSHL(x)
+  #else
+- #define coshl(x)	_CSTD _LCosh(x, 1)
++ #define coshl(x)	_CSTD QNX_LCosh(x, 1)
+  #endif
+  #ifdef _FAST_LOGL
+  #define logl(x)	_FAST_LOGL(x)
+  #else
+- #define logl(x)	_CSTD _LLog(x, 0)
++ #define logl(x)	_CSTD QNX_LLog(x, 0)
+  #endif
+  #ifdef _FAST_LOG10L
+  #define log10l(x)	_FAST_LOG10L(x)
+  #else
+- #define log10l(x)	_CSTD _LLog(x, 1)
++ #define log10l(x)	_CSTD QNX_LLog(x, 1)
+  #endif
+  #ifdef _FAST_SINL
+  #define sinl(x)	_FAST_SINL(x)
+  #else
+- #define sinl(x)	_CSTD _LSin(x, 0)
++ #define sinl(x)	_CSTD QNX_LSin(x, 0)
+  #endif
+  #ifdef _FAST_SINHL
+  #define sinhl(x)	_FAST_SINHL(x)
+  #else
+- #define sinhl(x)	_CSTD _LSinh(x, 1)
++ #define sinhl(x)	_CSTD QNX_LSinh(x, 1)
+  #endif
+ #else
+- #define sinhl(x)	_LSinh(x, 1)
+- #define cosl(x)	_LSin(x, 1)
+- #define coshl(x)	_LCosh(x, 1)
+- #define logl(x)	_LLog(x, 0)
+- #define log10l(x)	_LLog(x, 1)
+- #define sinl(x)	_LSin(x, 0)
+- #define sinhl(x)	_LSinh(x, 1)
++ #define sinhl(x)	QNX_LSinh(x, 1)
++ #define cosl(x)	QNX_LSin(x, 1)
++ #define coshl(x)	QNX_LCosh(x, 1)
++ #define logl(x)	QNX_LLog(x, 0)
++ #define log10l(x)	QNX_LLog(x, 1)
++ #define sinl(x)	QNX_LSin(x, 0)
++ #define sinhl(x)	QNX_LSinh(x, 1)
+ #endif
+ 
+  #if _HAS_C9X
+-long double log2l(long double);
+-
+- #define log2l(x)	_CSTD _LLog(x, -1)
++ #define log2l(x)	_CSTD QNX_LLog(x, -1)
+  #endif /* _IS_C9X */
+ 
+ _END_C_LIB_DECL
++#endif // __cplusplus
+  #endif /* defined(__cplusplus) && !defined(_NO_CPP_INLINES) */
+ 
+ _C_STD_END
+-
+ 		/* GENERIC TEMPLATES */
+ 
+  #if _HAS_GENERIC_TEMPLATES
+diff -Nur include/stddef.h qnx-include/stddef.h
+--- include/stddef.h	2021-06-01 11:49:11.439412693 -0400
++++ qnx-include/stddef.h	2021-06-01 11:49:13.963383051 -0400
+@@ -15,6 +15,12 @@
+  * $
+  */
+ 
++/**
++ * apparently, C++11 introduced changes that mess up stddef.h
++ * Solution is to ensure that definitions herein are included before any other
++ * sys/platform.h will include this at its bottom, as a workaround
++ */
++
+ #ifndef _STDDEF_H_INCLUDED
+ 
+ #ifndef __PLATFORM_H_INCLUDED
+@@ -69,6 +75,23 @@
+ 
+ #endif
+ 
++// max_align_t was added in C11 and seems to be defined by gcc
++// Our QNX is max 64-bit alignment but gcc wants 128-bit? so we block?
++// really not sure about this...
++#if (defined (__STDC_VERSION__) && __STDC_VERSION__+0 >= 201112L) \
++	|| (defined(__cplusplus) && __cplusplus+0 >= 201103L)
++#if (defined(__clang__) && !defined(__CLANG_MAX_ALIGN_T_DEFINED))
++	typedef _Uint64t max_align_t;
++	#define __CLANG_MAX_ALIGN_T_DEFINED
++#elif (defined(__GNUC__) && !defined(_GCC_MAX_ALIGN_T))
++	typedef _GCC_ATTR_ALIGN_u64t max_align_t;
++	#define _GCC_MAX_ALIGN_T
++#endif
++//#ifdef _STD_USING
++//using _CSTD max_align_t;
++//#endif
++#endif
++
+ #ifdef _STD_USING
+ using _CSTD ptrdiff_t; using _CSTD size_t; using _CSTD rsize_t;
+ #endif /* _STD_USING */
+diff -Nur include/stdint.h qnx-include/stdint.h
+--- include/stdint.h	2021-06-01 11:49:13.387389815 -0400
++++ qnx-include/stdint.h	2021-06-01 11:49:13.963383051 -0400
+@@ -97,7 +97,14 @@
+ typedef _Uintmaxt               uintmax_t;
+ #endif
+ 
++// reportedly, C11 and C++11 no longer require macro checks...?
++
++#if (defined __cplusplus && __cplusplus+0 < 201103L) \
++	|| (defined __STDC_VERSION__ && __STDC_VERSION__+0 < 201112L)
++/* always define the macros? */
++#else
+ #if !defined __cplusplus || defined __STDC_CONSTANT_MACROS
++#endif
+ 
+ #define INT8_C(__x)             __x
+ #define INT16_C(__x)            __x
+@@ -118,9 +125,15 @@
+ #define INTMAX_C(__x)           __x ## L
+ #define UINTMAX_C(__x)          __x ## UL
+ #endif
+-#endif
+ 
++#if (defined __cplusplus && __cplusplus+0 < 201103L) \
++	|| (defined __STDC_VERSION__ && __STDC_VERSION__+0 < 201112L)
++/* no #if checking */
++#else
++// combine previous endif with following #if
++#endif
+ #if !defined __cplusplus || defined __STDC_LIMIT_MACROS
++#endif
+ 
+ #if __PTR_BITS__ <= 32
+ #define _INT64_C(__x)           __x ## LL
+@@ -218,6 +231,12 @@
+ 
+ #define WINT_MIN                INT32_MIN
+ #define WINT_MAX                INT32_MAX
++
++#if (defined __cplusplus && __cplusplus+0 < 201103L) \
++	|| (defined __STDC_VERSION__ && __STDC_VERSION__+0 < 201112L)
++/* no #if checking */
++#else
++#endif
+ #endif
+ 
+ _C_STD_END
+diff -Nur include/string.h qnx-include/string.h
+--- include/string.h	2021-06-01 11:49:13.463388923 -0400
++++ qnx-include/string.h	2021-06-01 11:49:13.963383051 -0400
+@@ -73,7 +73,12 @@
+ __BEGIN_DECLS
+ 
+ _C_STD_BEGIN
+-
++// posix defines these with non-const return. BB's const_casting further below.
++// we use these globals because libstdc++ funcs collide with BB's C++ ones
++#if defined(__cplusplus)
++namespace QNX {
++extern "C" {
++#endif
+ extern _Const_return void *memchr(const void *__s, int __c, size_t __n);
+ extern _Const_return char *strchr(const char *__s, int __c);
+ extern _Const_return char *strpbrk(const char *__s1, const char *__s2);
+@@ -82,6 +87,24 @@
+ #if defined(__EXT_UNIX_MISC)
+ extern char *strcasestr(const char *__s1, const char *__s2);
+ #endif
++#if defined (__cplusplus)
++}}
++inline void *memchr(const void *__s, int __c, size_t __n) {
++	return const_cast<void*>(QNX::memchr(__s, __c, __n));
++}
++inline char *strchr(const char *__s, int __c) {
++	return const_cast<char*>(QNX::strchr(__s, __c));
++}
++inline char *strpbrk(const char *__s1, const char *__s2) {
++	return const_cast<char*>(QNX::strpbrk(__s1, __s2));
++}
++inline char *strrchr(const char *__s, int __c) {
++	return const_cast<char*>(QNX::strrchr(__s, __c));
++}
++inline char *strstr(const char *__s1, const char *__s2) {
++	return const_cast<char*>(QNX::strstr(__s1, __s2));
++}
++#endif
+ 
+ extern int   memcmp(const void *__s1, const void *__s2, size_t __n);
+ extern void *memcpy(void *__s1, const void *__s2, size_t __n);
+@@ -190,33 +213,33 @@
+ # include <string_chk.h>
+ #endif
+ 
+-#ifdef __cplusplus
++#if defined(__cplusplus) && !defined(_NO_CPP_INLINES)
+ extern "C++" {
+ _C_STD_BEGIN
+-inline void *memchr(void *_S, int _C, _CSTD size_t _N)
+-	{	/* call with const first argument */
++inline void *memchr(const void *_S, int _C, _CSTD size_t _N)
++	{
+ 	union { void *_Out; _Const_return void * _In; } _Result;
+-	return (_Result._In = _CSTD memchr((const void *)_S, _C, _N)), _Result._Out; }
++	return (_Result._In = _CSTD memchr(_S, _C, _N)), _Result._Out; }
+ 
+-inline char *strchr(char *_S, int _C)
+-	{	/* call with const first argument */
++inline char *strchr(const char *_S, int _C)
++	{
+ 	union { char *_Out; _Const_return char * _In; } _Result;
+-	return (_Result._In = _CSTD strchr((const char *)_S, _C)), _Result._Out; }
++	return (_Result._In = _CSTD strchr(_S, _C)), _Result._Out; }
+ 
+-inline char *strpbrk(char *_S, const char *_P)
+-	{	/* call with const first argument */
++inline char *strpbrk(const char *_S, const char *_P)
++	{
+ 	union { char *_Out; _Const_return char * _In; } _Result;
+-	return (_Result._In = _CSTD strpbrk((const char *)_S, _P)), _Result._Out; }
++	return (_Result._In = _CSTD strpbrk(_S, _P)), _Result._Out; }
+ 
+-inline char *strrchr(char *_S, int _C)
+-	{	/* call with const first argument */
++inline char *strrchr(const char *_S, int _C)
++	{
+ 	union { char *_Out; _Const_return char * _In; } _Result;
+-	return (_Result._In = _CSTD strrchr((const char *)_S, _C)), _Result._Out; }
++	return (_Result._In = _CSTD strrchr(_S, _C)), _Result._Out; }
+ 
+-inline char *strstr(char *_S, const char *_P)
+-	{	/* call with const first argument */
++inline char *strstr(const char *_S, const char *_P)
++	{
+ 	union { char *_Out; _Const_return char * _In; } _Result;
+-	return (_Result._In = _CSTD strstr((const char *)_S, _P)), _Result._Out; }
++	return (_Result._In = _CSTD strstr(_S, _P)), _Result._Out; }
+ _C_STD_END
+ }
+ #endif
+diff -Nur include/sys/neutrino.h qnx-include/sys/neutrino.h
+--- include/sys/neutrino.h	2021-06-01 11:49:13.575387607 -0400
++++ qnx-include/sys/neutrino.h	2021-06-01 11:49:13.967383004 -0400
+@@ -81,7 +81,9 @@
+ # undef __PTHREAD_ATTR_T
+ #endif
+ 
+-#define _NTO_VERSION	800	/* version number * 100 */
++// BB10 is actually qnx6 with some extras. Qt5 multimedia relies on newer alsa
++//#define _NTO_VERSION	800	/* version number * 100 */
++#define _NTO_VERSION	660	/* version number * 100 */
+ 
+ #define SYSMGR_PID		1
+ #define SYSMGR_CHID		1
+@@ -846,7 +848,7 @@
+ extern int SyncCreate_r(sync_t *__sync, const struct _sync_attr *__attr);
+ 
+ 
+-extern int PowerParameter(unsigned __id, unsigned __struct_len, 
++extern int PowerParameter(unsigned __id, unsigned __struct_len,
+ 						const struct nto_power_parameter *__new,
+ 						      struct nto_power_parameter *__old);
+ extern int PowerSetActive(unsigned __id);
+diff -Nur include/sys/platform.h qnx-include/sys/platform.h
+--- include/sys/platform.h	2021-06-01 11:49:13.583387513 -0400
++++ qnx-include/sys/platform.h	2021-06-01 11:49:13.967383004 -0400
+@@ -154,7 +154,7 @@
+ #undef __EXT_LF64SRC		/* expose func64() and type64_t in header file namespace */
+ #undef __EXT_FUNCALIAS64	/* standard func() will be an alias to func64() (acts like #define func func64) */
+ #undef __EXT_LF64ALIAS		/* func64() will be an alias to standard func() (acts like #define func64 func) */
+- 
++
+ #if defined(_XOPEN_SOURCE)
+ 	#if _XOPEN_SOURCE-0 == 500
+ 		#if _POSIX_C_SOURCE-0 > 199506
+@@ -263,7 +263,7 @@
+ #else
+ #define __ALIASATTR(__n)
+ #endif
+- 
++
+ /*
+   As part of the transition to a 64-bit world,
+   set the value of __OFF_BITS__ based on the input definitions
+@@ -272,7 +272,7 @@
+ 
+ #if _FILE_OFFSET_BITS+0 == 32 || (!defined(_FILE_OFFSET_BITS)) || (_FILE_OFFSET_SMALL+0 && __LONG_BITS__ < 64)
+ #define __OFF_BITS__	32
+-#elif _FILE_OFFSET_BITS+0 == 64 
++#elif _FILE_OFFSET_BITS+0 == 64
+ #define __OFF_BITS__	64
+ #else
+ #error _FILE_OFFSET_BITS value is unsupported
+@@ -295,7 +295,7 @@
+ 
+ lib/c truth table
+ 
+-These are the 'inputs', to be defined in source or on the command line: 
++These are the 'inputs', to be defined in source or on the command line:
+   __LONG_BITS__         32   32   32   32   32   32   32   32   64   64   64
+   _LARGEFILE64_SOURCE   n|0  n|0  n|0  n|0  1    1    1    1    n|0  1    ?
+   _FILE_OFFSET_BITS     n    n    32   64   n    n    32   64   !32  !32  32
+@@ -303,7 +303,7 @@
+ 
+   [0|1|32|64] means set to that numeric value, 'n' means not defined
+ 
+-These are the 'outputs', to be used internally for lib/c feature testing: 
++These are the 'outputs', to be used internally for lib/c feature testing:
+   __OFF_BITS__          64*  32   32   64   64*  32   32   64   64   64   ERR
+   __EXT_LF64SRC         N*   N    N    N    Y    Y    Y    Y    N    Y    ERR
+   __EXT_FUNCALIAS64     Y*   N    N    Y    Y*   N    N    Y    N    N    ERR
+@@ -488,6 +488,11 @@
+ #endif /* __cplusplus */
+ 
+ #include _NTO_HDR_(_packpop.h)
++/**
++ * stddef.h added here to ensure it is included before other headers
++ * otherwise, new C++11 defines prevent libs from seeing ptrdiff_t et al
++ */
++#include _NTO_HDR_(stddef.h)
+ 
+ #endif
+ 
+diff -Nur include/sys/target_nto.h qnx-include/sys/target_nto.h
+--- include/sys/target_nto.h	2021-06-01 11:49:13.543387983 -0400
++++ qnx-include/sys/target_nto.h	2021-06-01 11:49:13.967383004 -0400
+@@ -401,9 +401,10 @@
+ #define _FOFF	7
+ #define _FRND	1
+ 
++// longer _INT_C2 avoids conflict with libstdc++
+ 		/* integer properties */
+ #define _BITS_BYTE	8
+-#define _C2			1	/* 0 if not 2's complement */
++#define _INT_C2			1	/* 0 if not 2's complement */
+ #if defined(__CHAR_SIGNED__)
+ #define _CSIGN		1	/* 0 if char is not signed */
+ #elif defined(__CHAR_UNSIGNED__)
+diff -Nur include/sys/time.h qnx-include/sys/time.h
+--- include/sys/time.h	2021-06-01 11:49:13.571387655 -0400
++++ qnx-include/sys/time.h	2021-06-01 11:49:13.983382816 -0400
+@@ -1,16 +1,16 @@
+ /*
+  * $QNXLicenseC:
+  * Copyright 2007, QNX Software Systems. All Rights Reserved.
+- * 
+- * You must obtain a written license from and pay applicable license fees to QNX 
+- * Software Systems before you may reproduce, modify or distribute this software, 
+- * or any work that includes all or part of this software.   Free development 
+- * licenses are available for evaluation and non-commercial purposes.  For more 
++ *
++ * You must obtain a written license from and pay applicable license fees to QNX
++ * Software Systems before you may reproduce, modify or distribute this software,
++ * or any work that includes all or part of this software.   Free development
++ * licenses are available for evaluation and non-commercial purposes.  For more
+  * information visit http://licensing.qnx.com or email licensing@qnx.com.
+- *  
+- * This file may contain contributions from others.  Please review this entire 
+- * file for other proprietary rights or license notices, as well as the QNX 
+- * Development Suite License Guide at http://licensing.qnx.com/license-guide/ 
++ *
++ * This file may contain contributions from others.  Please review this entire
++ * file for other proprietary rights or license notices, as well as the QNX
++ * Development Suite License Guide at http://licensing.qnx.com/license-guide/
+  * for other information.
+  * $
+  */
+@@ -88,6 +88,7 @@
+ };
+ 
+ /* TODO: Convert remaining users of timezone so we can obsolete this definition */
++
+ #if defined(__EXT_QNX)
+ /*
+  * This is only here as source code porting aid. The only function that
+@@ -95,16 +96,19 @@
+  * that should be a NULL pointer now.
+  */
+ #if defined(__SLIB_DATA_INDIRECT) && !defined(__SLIB)
+-struct _timezone 
++struct _timezone
+ #else
+-struct timezone 
++struct timezone
+ #endif
+ {
+     int tz_minuteswest; /* minutes west of Greenwich */
+     int tz_dsttime; /* type of dst correction */
+ };
+ #else
+-struct timezone;
++/**
++ * modified to match time.h
++ */
++extern long int timezone;
+ #endif
+ 
+ #include <_packpop.h>
+diff -Nur include/wchar.h qnx-include/wchar.h
+--- include/wchar.h	2021-06-01 11:49:11.427412832 -0400
++++ qnx-include/wchar.h	2021-06-01 11:49:13.987382769 -0400
+@@ -160,29 +160,37 @@
+ 
+         /* INLINES AND OVERLOADS, FOR C++ */
+ _C_LIB_DECL
+-const wchar_t *wmemchr(const wchar_t *__ws, wchar_t __wc, size_t __n);
+-const wchar_t *wcschr(const wchar_t *__ws, wchar_t __wc);
+-const wchar_t *wcspbrk(const wchar_t *__ws1, const wchar_t *__ws2);
+-const wchar_t *wcsrchr(const wchar_t *__ws, wchar_t __wc);
+-const wchar_t *wcsstr(const wchar_t *__ws1, const wchar_t *__ws2);
++wchar_t *wmemchr(const wchar_t *__ws, wchar_t __wc, size_t __n);
++wchar_t *wcschr(const wchar_t *__ws, wchar_t __wc);
++wchar_t *wcspbrk(const wchar_t *__ws1, const wchar_t *__ws2);
++wchar_t *wcsrchr(const wchar_t *__ws, wchar_t __wc);
++wchar_t *wcsstr(const wchar_t *__ws1, const wchar_t *__ws2);
++inline wint_t btowc(int _C);
++inline double wcstod(const wchar_t *_S, wchar_t **_Endptr);
++inline unsigned long wcstoul(const wchar_t *_S, wchar_t **_Endptr, int _Base);
++inline _ULonglong wcstoull(const wchar_t *_S, wchar_t **_Endptr, int _Base);
++inline int wctob(wint_t _Wc);
++
+ _END_C_LIB_DECL
+ 
+-inline wchar_t *wmemchr(wchar_t *_S, wchar_t _C, size_t _N)
++#if !defined(_NO_CPP_INLINES)
++
++inline wchar_t *wmemchr(const wchar_t *_S, wchar_t _C, size_t _N)
+     {   /* call with const first argument */
+     union { wchar_t *_Out; const wchar_t * _In; } _Result;
+     return (_Result._In = wmemchr((const wchar_t *)_S, _C, _N)), _Result._Out; }
+ 
+-inline wchar_t *wcschr(wchar_t *_S, wchar_t _C)
++inline wchar_t *wcschr(const wchar_t *_S, wchar_t _C)
+     {   /* call with const first argument */
+     union { wchar_t *_Out; const wchar_t * _In; } _Result;
+     return (_Result._In = wcschr((const wchar_t *)_S, _C)), _Result._Out; }
+ 
+-inline wchar_t *wcspbrk(wchar_t *_S, const wchar_t *_P)
++inline wchar_t *wcspbrk(const wchar_t *_S, const wchar_t *_P)
+     {   /* call with const first argument */
+     union { wchar_t *_Out; const wchar_t * _In; } _Result;
+     return (_Result._In = wcspbrk((const wchar_t *)_S, _P)), _Result._Out; }
+ 
+-inline wchar_t *wcsrchr(wchar_t *_S, wchar_t _C)
++inline wchar_t *wcsrchr(const wchar_t *_S, wchar_t _C)
+     {   /* call with const first argument */
+     union { wchar_t *_Out; const wchar_t * _In; } _Result;
+     return (_Result._In = wcsrchr((const wchar_t *)_S, _C)), _Result._Out; }
+@@ -215,6 +223,7 @@
+     {   /* convert wide character to single byte */
+     return (_Wctob(_Wc)); }
+ 
++#endif /* _NO_CPP_INLINES */
+ #else /* __cplusplus */
+ #define _WConst_return
+ 
+diff -Nur include/ymath.h qnx-include/ymath.h
+--- include/ymath.h	2021-06-01 11:49:13.487388641 -0400
++++ qnx-include/ymath.h	2021-06-01 11:49:14.039382158 -0400
+@@ -135,9 +135,15 @@
+ 		/* ERROR REPORTING */
+ void _Feraise(int);
+ 
++// These declarations conflict with libstdc++ internals
++// workaround by enclosing them in namespace QNX and exporting C-tagged versions
++#if defined (__cplusplus)
++namespace QNX {
++extern "C" {
++#endif
+ 		/* double DECLARATIONS */
+-double _Cosh(double, double);
+ short _Dtest(double *);
++double _Cosh(double, double);
+ short _Exp(double *, double, long);
+ double _Log(double, int);
+ double _Sin(double, unsigned int);
+@@ -186,12 +192,44 @@
+ float logf(float);
+  #endif /* defined(__BORLANDC__) */
+ 
++#if defined (__cplusplus)
++}} /* namespace QNX { extern "C" */
++#define _QNX_STD QNX::
++#else
++#define _QNX_STD
++#endif
++/* close  QNX namespace and continue with C++ stuff */
++
++/* double DECLARATIONS */
++#define QNX_Dtest(a) _QNX_STD _Dtest(a)
++#define QNX_Exp(a, b, c) _QNX_STD _Exp(a, b, c)
++#define QNX_Cosh(a, b) _QNX_STD _Cosh(a, b)
++#define QNX_Log(a, b) _QNX_STD _Log(a, b)
++#define QNX_Sin(a, b) _QNX_STD _Sin(a, b)
++#define QNX_Sinh(a, b) _QNX_STD _Sinh(a, b)
++
++/* float DECLARATIONS */
++#define QNX_FDtest(a) _QNX_STD _FDtest(a)
++#define QNX_FExp(a, b, c) _QNX_STD _FExp(a, b, c)
++#define QNX_FCosh(a, b) _QNX_STD _FCosh(a, b)
++#define QNX_FLog(a, b) _QNX_STD _FLog(a, b)
++#define QNX_FSin(a, b) _QNX_STD _FSin(a, b)
++#define QNX_FSinh(a, b) _QNX_STD _FSinh(a, b)
++
++/* double DECLARATIONS */
++#define QNX_LDtest(a) _QNX_STD _LDtest(a)
++#define QNX_LExp(a, b, c) _QNX_STD _LExp(a, b, c)
++#define QNX_LCosh(a, b) _QNX_STD _LCosh(a, b)
++#define QNX_LLog(a, b) _QNX_STD _LLog(a, b)
++#define QNX_LSin(a, b) _QNX_STD _LSin(a, b)
++#define QNX_LSinh(a, b) _QNX_STD _LSinh(a, b)
++
+ _END_C_LIB_DECL
+ _C_STD_END
+ #endif /* _YMATH */
+ 
+ /*
+- * Copyright (c) 1992-2006 by P.J. Plauger.  ALL RIGHTS RESERVED.
++ * Copyright (c) 1992-2006 (c)y P.J. Plauger.  ALL RIGHTS RESERVED.
+  * Consult your license regarding permissions and restrictions.
+ V5.00:1296 */
+ 
+diff -Nur include/yvals.h qnx-include/yvals.h
+--- include/yvals.h	2021-06-01 11:49:13.515388312 -0400
++++ qnx-include/yvals.h	2021-06-01 11:49:14.043382111 -0400
+@@ -1,24 +1,20 @@
+ /*
+  * $QNXtpLicenseC:
+  * Copyright 2007, QNX Software Systems. All Rights Reserved.
+- * 
+- * You must obtain a written license from and pay applicable license fees to QNX 
+- * Software Systems before you may reproduce, modify or distribute this software, 
+- * or any work that includes all or part of this software.   Free development 
+- * licenses are available for evaluation and non-commercial purposes.  For more 
++ *
++ * You must obtain a written license from and pay applicable license fees to QNX
++ * Software Systems before you may reproduce, modify or distribute this software,
++ * or any work that includes all or part of this software.   Free development
++ * licenses are available for evaluation and non-commercial purposes.  For more
+  * information visit http://licensing.qnx.com or email licensing@qnx.com.
+- *  
+- * This file may contain contributions from others.  Please review this entire 
+- * file for other proprietary rights or license notices, as well as the QNX 
+- * Development Suite License Guide at http://licensing.qnx.com/license-guide/ 
++ *
++ * This file may contain contributions from others.  Please review this entire
++ * file for other proprietary rights or license notices, as well as the QNX
++ * Development Suite License Guide at http://licensing.qnx.com/license-guide/
+  * for other information.
+  * $
+  */
+ 
+-
+-
+-
+-
+ /* yvals.h values header for conforming compilers on various systems */
+ #ifndef _YVALS
+ #define _YVALS
+@@ -37,7 +33,7 @@
+ #ifdef _SOFT_FLOAT
+  /* no FPU hardware support */
+  #define _FPP_TYPE _FPP_NONE
+-#else 
++#else
+ 		/* DETERMINE MACHINE TYPE */
+ 
+  #if defined(i386) || defined(__i386) \
+@@ -82,7 +78,7 @@
+  #if !defined(__INTEL_COMPILER)
+  #define _HAS_C9X_IMAGINARY_TYPE	(_HAS_C9X && __EDG__ \
+ 	&& !defined(__cplusplus))
+- #endif 
++ #endif
+ 
+  #if !defined(_ECPP) && defined(_ABRCPP)
+   #define _ECPP
+@@ -216,7 +212,7 @@
+ 
+ 		/* INTEGER PROPERTIES */
+ #define _BITS_BYTE	8
+-#define _C2			1	/* 0 if not 2's complement */
++#define _INT_C2			1	/* 0 if not 2's complement */
+ #define _MBMAX		8	/* MB_LEN_MAX */
+ #define _ILONG		1	/* 0 if 16-bit int */
+ 
+@@ -387,6 +383,12 @@
+  #define _TEMPLATE_STAT
+ #endif /* */
+ 
++#if !defined(_HAS_C9X)
++	#if __STDC_VERSION__+0 >= 199901L || __cplusplus+0 > 199711L
++		#define _HAS_C9X	1
++	#endif
++#endif /* !defined(_HAS_C9X) */
++
+ #endif /* _YVALS */
+ 
+ /*
