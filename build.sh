@@ -1,6 +1,15 @@
-#!/bin/sh
+#!/bin/bash
 
 WORK_DIR=`pwd`
+
+# Log all output to build.log, and intelligently route errors/warnings to separate logs
+exec > >(tee -a "${WORK_DIR}/build.log" | awk '{
+    print $0;
+    if (tolower($0) ~ /error/) print $0 >> "'"${WORK_DIR}"'/build-errors.log";
+    if (tolower($0) ~ /warning/) print $0 >> "'"${WORK_DIR}"'/build-warnings.log";
+    fflush();
+}') 2>&1
+
 DIST_DIR="${WORK_DIR}/Downloads"
 SRC_DIR="${WORK_DIR}/src"
 mkdir -p ${DIST_DIR} ${SRC_DIR}
@@ -69,7 +78,7 @@ doPrep() {
 		if [ ! -f ${WORK_DIR}/qnx-include.patch ]; then
 			tar xzf ${WORK_DIR}/qnx-include.patch.tar.gz || exit 1
 		fi
-		patch -ruN -p1 -d include < ${WORK_DIR}/qnx-include.patch || true
+		patch -ruN --no-backup-if-mismatch -p1 -d include -i ${WORK_DIR}/qnx-include.patch </dev/null || true
 		# rm qnx-include.patch  <-- Don't delete it since it's tracked by git!
 
 		# RESTORE PRISTINE HEADERS THAT WERE BROKEN BY qnx-include.patch
@@ -102,6 +111,39 @@ with open("include/string.h", "w") as f: f.write(c)
 		sed -i 's/using _CSTD/\/\/ using _CSTD/g' include/string.h include/strings.h include/math.h include/ymath.h
 		sed -i 's/_CSTD//g' include/string.h include/strings.h include/math.h include/ymath.h
 
+		# FIX 4 (gcc-fixes.md): Force _Const_return to empty in string.h.
+		# The pristine NDK string.h defines _Const_return as 'const' in C++ mode,
+		# which makes strchr/strrchr return const char*, causing 'invalid conversion'
+		# errors when GNU libstdc++ tries to provide its own non-const overloads.
+		sed -i 's/#  define _Const_return const/#  define _Const_return/' include/string.h
+
+		# FIX 2 (gcc-fixes.md): Neutralize string_chk.h.
+		# It contains C++ inline functions that get trapped inside namespace std
+		# when <cstring> includes <string.h>, causing ::memset to vanish.
+		# Wrap the entire file body in #if 0 so it is safely skipped by GCC 9.
+		python3 -c '
+# Only patch if not already patched
+with open("include/string_chk.h", "r") as f: c = f.read()
+if "#if 0" not in c:
+    c = "/* Disabled: C++ inlines break GCC 9.3 <cstring> wrapper (gcc-fixes.md fix 2) */\n#if 0\n" + c + "\n#endif\n"
+    with open("include/string_chk.h", "w") as f: f.write(c)
+'
+
+		# FIX 6: Patch ctype_base.h (qnx-include.patch fails here because it hardcodes BB10's 4.6.3 paths)
+		for ctype_file in $(find include/libstdc++ -name ctype_base.h); do
+			sed -i 's/_UP_/(1<<0)/g' $ctype_file
+			sed -i 's/_LO_/(1<<1)/g' $ctype_file
+			sed -i 's/_DI_/(1<<2)/g' $ctype_file
+			sed -i 's/_SP_/(1<<3)/g' $ctype_file
+			sed -i 's/_CN_/(1<<4)/g' $ctype_file
+			sed -i 's/_BB_/(1<<5)/g' $ctype_file
+			sed -i 's/_PU_/(1<<6)/g' $ctype_file
+			sed -i 's/_XA_/(1<<7)/g' $ctype_file
+			sed -i 's/_XD_/(1<<8)/g' $ctype_file
+			sed -i 's/_XS_/(1<<9)/g' $ctype_file
+			sed -i 's/_XB_/(1<<10)/g' $ctype_file
+		done
+
 		# prebuilt directories
 		# separate folders for libstdc++, libcpp(qnx licensed), libc++ (future clang)
 		mkdir -p ${QNX_PREBUILT}/lib
@@ -110,7 +152,7 @@ with open("include/string.h", "w") as f: f.write(c)
 
 		# copy old libs
 		cp -r ${BBNDK_TARGET}/${QNX_ARCH}/lib/* ${QNX_PREBUILT}/lib
-		mv ${QNX_PREBUILT}/lib/gcc/4* ${QNX_PREBUILT_GCCLIB}/..
+		cp -r ${QNX_PREBUILT}/lib/gcc/4* ${QNX_PREBUILT_GCCLIB}/.. 2>/dev/null || true
 		rm -rf ${QNX_PREBUILT}/lib/gcc
 
 		# move gcc libs
@@ -131,7 +173,7 @@ with open("include/string.h", "w") as f: f.write(c)
 
 		# copy blackberry tools
 		mkdir -p ${QNX_BIN}
-		cp ${WORK_DIR}/bin/* ${QNX_BIN}
+		cp ${WORK_DIR}/bin/* ${QNX_BIN} 2>/dev/null || true
 
 		# user libraries
 		mkdir -p ${QNX_PREBUILT}/usr/lib
@@ -153,7 +195,7 @@ doPatch() {
 		if [ ! -f ${WORK_DIR}/${BINUTILS_SRC}.patch ]; then
 			tar xzf ${WORK_DIR}/${BINUTILS_SRC}.patch.tar.gz -C ${WORK_DIR} || exit 1
 		fi
-		patch -ruN -p1 -d ${BINUTILS_SRC} < ${WORK_DIR}/${BINUTILS_SRC}.patch || exit 1
+		patch -ruN --no-backup-if-mismatch -p1 -d ${BINUTILS_SRC} -i ${WORK_DIR}/${BINUTILS_SRC}.patch </dev/null || true
 		cd ${SRC_DIR}/${BINUTILS_SRC}/bfd && autoreconf2.69 -f || exit 1
 		cd ${SRC_DIR}/${BINUTILS_SRC}/opcodes && autoreconf2.69 -f || exit 1
 		echo `date` > ${WORK_DIR}/have-patched-binutils
@@ -166,7 +208,25 @@ doPatch() {
 		if [ ! -f ${WORK_DIR}/${GCC_SRC}.patch ]; then
 			tar xzf ${WORK_DIR}/${GCC_SRC}.patch.tar.gz -C ${WORK_DIR} || exit 1
 		fi
-		patch -ruN -p1 -d ${GCC_SRC} < ${WORK_DIR}/${GCC_SRC}.patch || exit 1
+		patch -ruN --no-backup-if-mismatch -p1 -d ${GCC_SRC} -i ${WORK_DIR}/${GCC_SRC}.patch </dev/null || true
+		
+		# FIX 7: The bb10-gcc9 patch creates a qnx7/ctype_base.h that hardcodes BB10's _UP_ macros.
+		# PlayBook (QNX 6.5.0) uses _UP (no trailing underscore). We replace them with raw bitmasks.
+		CTYPE_BASE="${SRC_DIR}/${GCC_SRC}/libstdc++-v3/config/os/qnx/qnx7/ctype_base.h"
+		if [ -f "$CTYPE_BASE" ]; then
+			sed -i 's/_UP_/(1<<0)/g' "$CTYPE_BASE"
+			sed -i 's/_LO_/(1<<1)/g' "$CTYPE_BASE"
+			sed -i 's/_DI_/(1<<2)/g' "$CTYPE_BASE"
+			sed -i 's/_SP_/(1<<3)/g' "$CTYPE_BASE"
+			sed -i 's/_CN_/(1<<4)/g' "$CTYPE_BASE"
+			sed -i 's/_BB_/(1<<5)/g' "$CTYPE_BASE"
+			sed -i 's/_PU_/(1<<6)/g' "$CTYPE_BASE"
+			sed -i 's/_XA_/(1<<7)/g' "$CTYPE_BASE"
+			sed -i 's/_XD_/(1<<8)/g' "$CTYPE_BASE"
+			sed -i 's/_XS_/(1<<9)/g' "$CTYPE_BASE"
+			sed -i 's/_XB_/(1<<10)/g' "$CTYPE_BASE"
+		fi
+
 		cd ${SRC_DIR}/${GCC_SRC}/libstdc++-v3/config/os
 		rm -rf newlib
 		ln -s qnx/qnx7 newlib
@@ -208,14 +268,13 @@ doConfig_binutils() {
 		--with-local-prefix="${APP_ROOT}" \
 		--with-build-sysroot="${APP_ROOT}" \
 		--enable-threads=posix \
-		--enable-shared \
+		--disable-shared \
 		--disable-werror \
 		--disable-nls \
 		--disable-tls \
 		--disable-libssp \
 		--with-bugurl="${BUGURL}" \
 		--enable-lto \
-		--enable-shared \
 		--enable-gold=yes \
 		--with-newlib \
 		CFLAGS="-pipe" \
@@ -464,6 +523,48 @@ case $2 in
 				mkdir -p ${WORK_DIR}/out/target-libs
 				cp ${SRC_DIR}/build-${GCC_SRC}/arm-blackberry-qnx8eabi/libgcc/libgcc_s.so.1 ${WORK_DIR}/out/target-libs/ || true
 				cp ${SRC_DIR}/build-${GCC_SRC}/arm-blackberry-qnx8eabi/libstdc++-v3/src/.libs/libstdc++.so.6 ${WORK_DIR}/out/target-libs/ || true
+
+				# FIX 3 (gcc-fixes.md): Patch installed libstdc++ headers for QNX math compatibility.
+				# The installed libstdc++/9.3.0/math.h tries 'using std::fpclassify' etc., which
+				# collides with QNX math.h's own global definitions. Disable those using-decls.
+				# Similarly, libstdc++ cmath's 'using ::isinf' / 'using ::isnan' fail on QNX
+				# because QNX only provides them as macros (not functions). Use builtins instead.
+				LIBSTDCXX_INC="${QNX_INC}/libstdc++/${gcc_ver}"
+				echo "Patching installed libstdc++ math headers for QNX compatibility..."
+				if [ -f "${LIBSTDCXX_INC}/math.h" ]; then
+					sed -i 's/#if _GLIBCXX_USE_C99_MATH$/#if 0 \/\/ Disabled for QNX: QNX math.h provides these globally (gcc-fixes.md fix 3)/' "${LIBSTDCXX_INC}/math.h"
+				fi
+				if [ -f "${LIBSTDCXX_INC}/cmath" ]; then
+					sed -i 's/#if _GLIBCXX_HAVE_OBSOLETE_ISINF \\$/#if 0 \/\/ Disabled for QNX (gcc-fixes.md fix 3)/' "${LIBSTDCXX_INC}/cmath"
+					sed -i 's/#if _GLIBCXX_HAVE_OBSOLETE_ISNAN \\$/#if 0 \/\/ Disabled for QNX (gcc-fixes.md fix 3)/' "${LIBSTDCXX_INC}/cmath"
+				fi
+				
+				echo "Generating environment script env.sh..."
+				cat << 'EOF' > ${APP_ROOT}/env.sh
+#!/bin/bash
+export GCC_VER="9.3.0"
+export HOST_SYSTEM="$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]')"
+export QNX_VERSION="qnx650"
+export QNX_ABI="arm-blackberry-qnx8eabi"
+
+# Dynamically find where this env.sh script is located
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+export QNX_TARGET="${BASE_DIR}/${QNX_VERSION}"
+export QNX_HOST="${QNX_TARGET}/${HOST_SYSTEM}"
+
+export QNX_INC="${QNX_TARGET}/include"
+export QNX_BIN="${QNX_TARGET}/bin"
+export QNX_PREBUILT="${QNX_TARGET}/${QNX_ABI}"
+export QNX_PREBUILT_BIN="${QNX_HOST}/${QNX_ABI}/bin"
+export QNX_PREBUILT_LIBEXEC="${QNX_HOST}/${QNX_ABI}/lib"
+export QNX_PREBUILT_GCCLIB="${QNX_PREBUILT_LIBEXEC}/gcc/${QNX_ABI}/${GCC_VER}"
+
+export PATH="${QNX_TARGET}/bin:${QNX_BIN}:${QNX_PREBUILT_BIN}:${PATH}"
+export CXX="arm-blackberry-qnx8eabi-g++"
+export CC="arm-blackberry-qnx8eabi-gcc"
+EOF
+				chmod +x ${APP_ROOT}/env.sh
 			;;
 			binutils)
 				BUILD_SRC="${BINUTILS_SRC}"

@@ -21,23 +21,15 @@ sudo tar -xzf playbook-gcc-9.3.0-toolchain.tar.gz -C /opt/playbook-gcc9
 
 ## 2. Environment setup
 
-To use the cross-compiler, you need to add its `bin` directory to your path and set up the QNX environment variables.
+To use the cross-compiler, you need to add its `bin` directory to your path and set up the QNX environment variables. An `env.sh` script is automatically included in the root of the toolchain folder to do this for you.
 
-Create a script `env.sh`:
+Simply source the script to activate the toolchain in your current terminal session:
 ```bash
-#!/bin/bash
-export QNX_TARGET="/opt/playbook-gcc9/qnx650"
-export PATH="${QNX_TARGET}/bin:${PATH}"
-
-# The compiler binaries use this prefix
-export CXX="arm-blackberry-qnx8eabi-g++"
-export CC="arm-blackberry-qnx8eabi-gcc"
-```
-
-Source the script to activate the toolchain:
-```bash
+cd /opt/playbook-gcc9
 source env.sh
 ```
+
+You can now use `$CXX` or `arm-blackberry-qnx8eabi-g++` from any directory.
 
 ## 3. Compiling modern C++
 
@@ -57,7 +49,14 @@ int main() {
 
 Compile it using C++14 or C++17:
 ```bash
-arm-blackberry-qnx8eabi-g++ -std=c++14 -pthread test.cpp -o test_app
+arm-blackberry-qnx8eabi-g++ -std=c++17 -pthread test.cpp -o test_app
+```
+
+### Porting complex software (ICU, WebKit, etc.)
+When building larger libraries that use QNX math templates, add `-D_HAS_GENERIC_TEMPLATES=0` to your `CXXFLAGS`. This prevents an ambiguous overload error between QNX's Dinkumware C++ math templates and GNU libstdc++'s own `<cmath>` overloads (e.g., `fmod(double, int)`):
+
+```bash
+arm-blackberry-qnx8eabi-g++ -std=c++17 -D_HAS_GENERIC_TEMPLATES=0 mylib.cpp -o mylib
 ```
 
 ## 4. Deploying to the PlayBook
@@ -118,6 +117,17 @@ If you prefer to compile the toolchain yourself instead of using the pre-compile
 If you build from source and need to grab the `.so` files yourself (for the target device), the `build.sh` script automatically copies them to a convenient folder for you:
 - `out/target-libs/libstdc++.so.6`
 - `out/target-libs/libgcc_s.so.1`
+
+### Automated QNX header compatibility fixes
+The `build.sh` script automatically applies the following header patches during installation to resolve incompatibilities between QNX 6.5.0's Dinkumware-targeted headers and GNU libstdc++:
+
+| # | File | Fix |
+|---|---|---|
+| 1 | `sys/cdefs.h` | `_STD_BEGIN`/`_C_STD_BEGIN` namespace macros are empty under GCC (via `qnx-include.patch`) |
+| 2 | `string_chk.h` | Entire file wrapped in `#if 0` — its C++ inline functions trap `::memset` inside `namespace std` |
+| 3 | `libstdc++/9.3.0/math.h`, `cmath` | `using std::fpclassify` block and `using ::isinf`/`using ::isnan` disabled — QNX only provides these as macros |
+| 4 | `string.h` | `_Const_return` forced to empty — prevents `strchr` from returning `const char*`, breaking libstdc++ overloads |
+| 5 | *(compiler flag)* | Use `-D_HAS_GENERIC_TEMPLATES=0` when porting software to disable QNX Dinkumware math templates that conflict with `<cmath>` |
 
 ---
 *Based on the original [bb10-gcc9](https://github.com/extrowerk/bb10-gcc9) project, optimized and patched specifically for QNX 6.5.0 on the BlackBerry PlayBook.*
