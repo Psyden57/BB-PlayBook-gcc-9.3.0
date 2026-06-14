@@ -42,7 +42,7 @@ You can now compile modern C++ code targeting the PlayBook. The compiler automat
 #include <vector>
 
 int main() {
-    std::cout << "Hello Playbook from GCC 9.3!" << std::endl;
+    std::cout << "Hello from GCC 9.3!" << std::endl;
     return 0;
 }
 ```
@@ -51,6 +51,7 @@ Compile it using C++14 or C++17:
 ```bash
 arm-blackberry-qnx8eabi-g++ -std=c++17 -pthread test.cpp -o test_app
 ```
+(You can also use `$CXX` to shorten the `arm-blackberry-qnx8eabi-g++` command)
 
 ### Porting complex software (ICU, WebKit, etc.)
 When building larger libraries that use QNX math templates, add `-D_HAS_GENERIC_TEMPLATES=0` to your `CXXFLAGS`. This prevents an ambiguous overload error between QNX's Dinkumware C++ math templates and GNU libstdc++'s own `<cmath>` overloads (e.g., `fmod(double, int)`):
@@ -65,7 +66,7 @@ Because you compiled the binary using a modern GCC, it requires modern C++ stand
 
 **Step A: Transfer the runtime libraries**
 Extract `playbook-gcc-9.3.0-target-libs.tar.gz` and transfer the `.so` files to your PlayBook. I recommend keeping them in an isolated folder like `/accounts/devuser/lib` or bundled inside your app's directory.
-
+(Assuming you have either blackberry-connect or an SSH session already running)
 ```bash
 scp -o StrictHostKeyChecking=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa -o MACs=+hmac-sha1 -i rsa libstdc++.so.6 libgcc_s.so.1 devuser@<playbook-ip>:/accounts/devuser/lib/
 ```
@@ -117,17 +118,6 @@ If you prefer to compile the toolchain yourself instead of using the pre-compile
 If you build from source and need to grab the `.so` files yourself (for the target device), the `build.sh` script automatically copies them to a convenient folder for you:
 - `out/target-libs/libstdc++.so.6`
 - `out/target-libs/libgcc_s.so.1`
-
-### Automated QNX header compatibility fixes
-The `build.sh` script automatically applies the following header patches during installation to resolve incompatibilities between QNX 6.5.0's Dinkumware-targeted headers and GNU libstdc++:
-
-| # | File | Fix |
-|---|---|---|
-| 1 | `sys/cdefs.h` | `_STD_BEGIN`/`_C_STD_BEGIN` namespace macros are empty under GCC (via `qnx-include.patch`) |
-| 2 | `string_chk.h` | Entire file wrapped in `#if 0` — its C++ inline functions trap `::memset` inside `namespace std` |
-| 3 | `libstdc++/9.3.0/math.h`, `cmath` | `using std::fpclassify` block and `using ::isinf`/`using ::isnan` disabled — QNX only provides these as macros |
-| 4 | `string.h` | `_Const_return` forced to empty — prevents `strchr` from returning `const char*`, breaking libstdc++ overloads |
-| 5 | *(compiler flag)* | Use `-D_HAS_GENERIC_TEMPLATES=0` when porting software to disable QNX Dinkumware math templates that conflict with `<cmath>` |
 
 ---
 *Based on the original [bb10-gcc9](https://github.com/extrowerk/bb10-gcc9) project, optimized and patched specifically for QNX 6.5.0 on the BlackBerry PlayBook.*
